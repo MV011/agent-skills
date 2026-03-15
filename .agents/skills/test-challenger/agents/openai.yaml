@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Challenger"
+  short_description: "Challenge and rate tests for reliability"
+  default_prompt: "Use $test-challenger to review these tests before merge."
