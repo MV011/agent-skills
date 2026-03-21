@@ -60,6 +60,55 @@ Look for the project's type-checking command:
 - If `package.json` has a `typecheck` script → `$PM run typecheck`
 - Otherwise → `npx tsc --noEmit`
 
+## Step 1b: Run Semgrep SAST Scan (if available)
+
+Before launching review agents, run a local Semgrep scan on the changed files. This catches security vulnerabilities, OWASP top-10 issues, and language-specific anti-patterns with exact file:line evidence — higher confidence than agent-based reviews.
+
+```bash
+# Check if Semgrep is installed
+if command -v semgrep &>/dev/null; then
+  SEMGREP_AVAILABLE=true
+else
+  SEMGREP_AVAILABLE=false
+fi
+```
+
+**If available, scan only changed source files:**
+```bash
+CHANGED_SRC=$(git diff $MERGE_BASE...HEAD --name-only | grep -E '\.(cs|ts|tsx|js|jsx|py|go|rb|java)$')
+
+if [ -n "$CHANGED_SRC" ] && [ "$SEMGREP_AVAILABLE" = true ]; then
+  # Core security rules (language-agnostic)
+  semgrep scan \
+    --config "p/owasp-top-ten" \
+    --config "p/cwe-top-25" \
+    --config "p/security-audit" \
+    --json --output /tmp/semgrep-results.json \
+    $CHANGED_SRC 2>/dev/null
+
+  # Language-specific rules based on detected files
+  CS_FILES=$(echo "$CHANGED_SRC" | grep '\.cs$')
+  [ -n "$CS_FILES" ] && semgrep scan --config "p/csharp" --json --output /tmp/semgrep-csharp.json $CS_FILES 2>/dev/null
+
+  TS_FILES=$(echo "$CHANGED_SRC" | grep -E '\.(ts|tsx)$')
+  [ -n "$TS_FILES" ] && semgrep scan --config "p/typescript" --config "p/react" --json --output /tmp/semgrep-ts.json $TS_FILES 2>/dev/null
+
+  PY_FILES=$(echo "$CHANGED_SRC" | grep '\.py$')
+  [ -n "$PY_FILES" ] && semgrep scan --config "p/python" --json --output /tmp/semgrep-python.json $PY_FILES 2>/dev/null
+
+  GO_FILES=$(echo "$CHANGED_SRC" | grep '\.go$')
+  [ -n "$GO_FILES" ] && semgrep scan --config "p/golang" --json --output /tmp/semgrep-go.json $GO_FILES 2>/dev/null
+fi
+```
+
+**Handling Semgrep results:**
+- Semgrep findings are **evidence-based** (exact rule ID + file:line) — treat them as 95%+ confidence
+- Include them as CRITICAL or HIGH findings in the consolidated report (Step 5)
+- Semgrep findings corroborate agent findings when both flag the same area
+- If Semgrep is not installed, note it in the report and rely on agent-based security review
+
+**Install Semgrep:** `pip install semgrep` (one-time, runs locally, free for open-source and local use)
+
 ## Step 2: Assess the PR Scope
 
 ### Scope the Diff
@@ -117,6 +166,7 @@ Based on the scope assessment, select which reviewers or subagents to dispatch. 
 | DB migrations present | **Migration Integrity Reviewer** | Deep code or schema explorer |
 | 5+ files changed | **Performance Reviewer** | Performance-focused reviewer |
 | Dependencies touched | **Dependency Pattern Checker** | Dependency and ecosystem reviewer |
+| Semgrep available | **Semgrep SAST** | Local scan via Step 1b (not an agent — runs before dispatch) |
 
 ### Scale by PR Size
 
@@ -307,3 +357,4 @@ Provide findings with severity, confidence %, file:line, description, and sugges
 - **Agents do RESEARCH ONLY** (no code writes). They report findings. The main conversation context applies fixes after user approval.
 - The Silent Failure Hunter is always-on because error handling bugs exist everywhere, not just in API routes. In practice, it consistently finds the highest-severity issues.
 - When multiple agents flag the same issue independently (corroboration), treat that as strong evidence the issue is real.
+- **Semgrep (Step 1b)** runs before agents if installed. Its findings are evidence-based (exact rule ID + file:line) and should be treated as 95%+ confidence. Install with `pip install semgrep`. CI can run it via `.github/workflows/semgrep.yml`. Semgrep findings that overlap with agent findings provide the strongest corroboration signal.
