@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -63,9 +64,11 @@ def write_claude_agent(name: str, description: str, body: str) -> None:
 def write_gemini_command(name: str, description: str) -> None:
     GEMINI_COMMANDS_DIR.mkdir(parents=True, exist_ok=True)
     output = GEMINI_COMMANDS_DIR / f"{name}.toml"
+    # TOML single-quoted literals cannot use Python-style \\' escapes; json.dumps
+    # yields a valid TOML basic string for arbitrary description text.
     prompt = "\n".join(
         [
-            f"description = {description!r}",
+            f"description = {json.dumps(description)}",
             'prompt = """',
             f"Use @{{.agents/skills/{name}/SKILL.md}} as the primary instructions for this request.",
             "",
