@@ -1,0 +1,97 @@
+{
+  "notes": [
+    "Model routing for Claude runtimes only. Non-Claude runtimes (Codex, Cursor, Gemini, ...) ignore the model IDs and map the abstract tiers onto their own model lineup — see 'Portability & Model Routing' in SKILL.md.",
+    "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
+    "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run."
+  ],
+  "limits": {
+    "max_concurrent_agents": 6,
+    "max_fable_dispatches": 3,
+    "sonnet_effort_ceiling": "high",
+    "impl_failures_before_escalation": 2
+  },
+  "triage_thresholds": {
+    "trivial_max_loc": 50,
+    "trivial_max_files": 3,
+    "large_min_loc": 800,
+    "large_min_files": 20
+  },
+  "risk_paths": [
+    "**/auth/**",
+    "**/authn/**",
+    "**/authz/**",
+    "**/crypto/**",
+    "**/payment/**",
+    "**/billing/**",
+    "**/*session*",
+    "**/middleware/**",
+    "**/*security*",
+    "**/migrations/**",
+    "**/*.sql",
+    "**/.github/workflows/**",
+    "**/Dockerfile",
+    "**/docker-compose*",
+    "**/package.json",
+    "**/pyproject.toml",
+    "**/go.mod",
+    "**/Cargo.toml",
+    "**/*.csproj"
+  ],
+  "generated_paths": [
+    "**/package-lock.json",
+    "**/pnpm-lock.yaml",
+    "**/yarn.lock",
+    "**/bun.lockb",
+    "**/Cargo.lock",
+    "**/go.sum",
+    "**/poetry.lock",
+    "**/composer.lock",
+    "**/*.snap",
+    "**/__snapshots__/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/*.min.js",
+    "**/*.map",
+    "**/*.generated.*"
+  ],
+  "tiers": {
+    "cheap": {
+      "model": "claude-haiku-4-5",
+      "claude_code": "haiku",
+      "notes": "Triage, patch application, mechanical work. NEVER attach an effort value — Haiku 4.5 rejects the effort parameter."
+    },
+    "standard": {
+      "model": "claude-sonnet-5",
+      "claude_code": "sonnet",
+      "notes": "Most review dimensions. Effort low/medium/high only — never xhigh (costs more than Opus at comparable accuracy; escalate to 'strong' instead). Ships cyber safeguards, so it CAN refuse — same fallback handling as 'deep'."
+    },
+    "strong": {
+      "model": "claude-opus-4-8",
+      "claude_code": "opus",
+      "notes": "Coordinator, adjudication, and universal fallback. No meaningful classifier-refusal risk in normal PR review — the safe choice for anything that must not stall."
+    },
+    "deep": {
+      "model": "claude-fable-5",
+      "claude_code": "fable",
+      "notes": "Risk-surface review only. Safety classifiers can refuse security-adjacent content (elevated false positives on auth/vulns/injection). Mandatory 30-day retention, no ZDR. Expensive."
+    }
+  },
+  "tasks": {
+    "triage": { "tier": "cheap" },
+    "coordinator": { "tier": "strong" },
+    "security-review": { "tier": "deep", "fallback": { "tier": "strong" } },
+    "migration-review": { "tier": "deep", "fallback": { "tier": "strong" } },
+    "logic-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
+    "silent-failure-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
+    "test-review": { "tier": "standard", "effort": "medium", "fallback": { "tier": "standard", "effort": "high" } },
+    "type-design-review": { "tier": "standard", "effort": "medium", "fallback": null },
+    "performance-review": { "tier": "standard", "effort": "medium", "fallback": null },
+    "dependency-review": { "tier": "standard", "effort": "medium", "fallback": null },
+    "style-review": { "tier": "standard", "effort": "low", "fallback": null },
+    "comment-review": { "tier": "standard", "effort": "low", "fallback": null },
+    "deep-dive": { "tier": "strong", "fallback": null },
+    "trivial-review": { "tier": "standard", "effort": "low", "fallback": null },
+    "apply-patch": { "tier": "cheap", "fallback": { "tier": "standard", "effort": "low" } }
+  },
+  "sensitive_repo": false
+}
