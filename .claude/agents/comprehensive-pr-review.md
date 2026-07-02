@@ -147,10 +147,18 @@ fi
 
 ```bash
 if [ "$LUCIDSHARK_AVAILABLE" = true ]; then
+  # Scope deliberately EXCLUDES --all. LucidShark already defaults to
+  # changed-files-only, but --all ALSO enables the heavyweight domains
+  # (--testing, --coverage, --duplication/duplo, --sca/Trivy) — these are
+  # whole-program / whole-dependency-tree passes that CI already runs and that
+  # saturate a multi-worktree dev machine when many worktrees scan at once.
+  # Keep only the fast, diff-scoped static checks agent review benefits from.
+  # Re-add a heavy domain explicitly only for a deliberate one-off deep pass.
+  LUCIDSHARK_DOMAINS="--linting --type-checking --formatting --sast"
   if [ -n "$BASE" ]; then
-    lucidshark scan --all --base-branch "origin/$BASE" --format ai 2>&1 | tee /tmp/lucidshark-pr-review.txt
+    lucidshark scan $LUCIDSHARK_DOMAINS --base-branch "origin/$BASE" --format ai 2>&1 | tee /tmp/lucidshark-pr-review.txt
   else
-    lucidshark scan --all --format ai 2>&1 | tee /tmp/lucidshark-pr-review.txt
+    lucidshark scan $LUCIDSHARK_DOMAINS --format ai 2>&1 | tee /tmp/lucidshark-pr-review.txt
   fi
   LUCIDSHARK_EXIT=$?
 else
