@@ -1,6 +1,6 @@
 {
   "notes": [
-    "Model routing for Claude runtimes only. Non-Claude runtimes (Codex, Cursor, Gemini, ...) ignore the model IDs and map the abstract tiers onto their own model lineup — see 'Portability & Model Routing' in SKILL.md.",
+    "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md). Other runtimes (Cursor, Gemini, ...) ignore both and map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
     "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
     "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run."
   ],
@@ -74,6 +74,29 @@
       "model": "claude-fable-5",
       "claude_code": "fable",
       "notes": "Risk-surface review only. Safety classifiers can refuse security-adjacent content (elevated false positives on auth/vulns/injection). Mandatory 30-day retention, no ZDR. Expensive."
+    }
+  },
+  "codex_tiers": {
+    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallback/pin model: gpt-5.5. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
+    "cheap": {
+      "model": "gpt-5.6-luna",
+      "effort": "low",
+      "notes": "Triage, mechanical checks, patch application. 'medium' for larger shards. Cheapest tier; 'ultra' accepted but may clamp to max."
+    },
+    "standard": {
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "notes": "Most review dimensions; effort up to 'high'. GPT-5.5-class capability at ~half cost."
+    },
+    "strong": {
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "notes": "Adjudication-grade review and universal fallback; effort up to 'xhigh'. Also the vision tier (attach images with -i) — GPT vision outperforms Claude Opus 4.8 on screenshot/UI review."
+    },
+    "deep": {
+      "model": "gpt-5.6-sol",
+      "effort": "max",
+      "notes": "Risk-surface review. 'ultra' (parallel delegate subagents) is opt-in only for plan-level passes — never an automatic escalation."
     }
   },
   "tasks": {

@@ -15,6 +15,7 @@ This skill performs an intelligent, multi-agent code review before merging a bra
 |---|---|
 | `config/dispatch.json` | Selecting agents or models — limits, thresholds, risk paths, task routing |
 | `references/model-routing-claude.md` | Running on a **Claude runtime**, before any dispatch — tier→model table, escalation ladder, refusal mechanics |
+| `references/model-routing-codex.md` | Running on a **Codex runtime**, or cross-dispatching leaves through the Codex CLI (GPT-5.5/5.6 lineup) — tier→model table, effort ceilings, headless `codex exec` mechanics |
 | `references/triage.md` | Performing Step 2 — full heuristics and the triage-plan schema |
 | `references/quality-gates.md` | Performing Step 3 — full Semgrep/LucidShark commands, installs, result handling |
 | `references/agent-prompts.md` | Dispatching specialized agents (security/perf/migration) or implementation agents — templates and the finding metadata contract |
@@ -36,7 +37,9 @@ This skill runs on any agent runtime. Model selection is expressed as **abstract
 
 **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` **before dispatching anything**, and follow them exactly — they encode the tier→model mapping, the escalation ladder, refusal handling, and cost rules.
 
-**On any other runtime** (Codex, Cursor, Gemini CLI, ...): do not read the Claude routing file. Map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
+**On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-5.6 tier→model mapping (luna/terra/sol + max/ultra efforts), the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
+
+**On any other runtime** (Cursor, Gemini CLI, ...): do not read either routing file. Map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
 
 **Universal rules (all runtimes):**
 - `limits.max_concurrent_agents` (default 6) caps **simultaneous** dispatches, not the total: a 12-agent plan runs in waves of ≤6.
@@ -162,7 +165,7 @@ Total agent count may exceed `max_concurrent_agents` — that cap only bounds ho
 Launch the selected reviewers in waves of ≤ `max_concurrent_agents`, using whatever agent/subagent mechanism the runtime provides. Each reviewer runs in its own context and must not modify files. Pass per dispatch:
 
 - `role`/`specialization`: the reviewer capability from Step 4
-- `model`: resolved from the task's tier (Claude runtimes: per `references/model-routing-claude.md`)
+- `model`: resolved from the task's tier (Claude runtimes: per `references/model-routing-claude.md`; Codex/GPT dispatch: per `references/model-routing-codex.md`)
 - `prompt`: the template below with files and focus areas; add effort/depth instructions per the routing file
 - `label`: descriptive name for tracking (e.g., `silent-failure-hunter`)
 
@@ -276,4 +279,4 @@ Update the findings table with final fix statuses.
 - When multiple agents flag the same issue independently (corroboration), treat that as strong evidence it's real.
 - **No external review bots.** This pipeline does not invoke CodeRabbit, Greptile, or similar CLIs/services — local gates are Semgrep + LucidShark (Step 3) plus this skill's own agents. Feedback those bots leave on the remote PR is handled by separate skills (`resolve-reviews` / `resolve-agent-reviews`), not here.
 - `max_concurrent_agents` bounds parallelism, not coverage: queue, don't cut, when the plan is bigger than the cap.
-- On Claude runtimes, all model choices come from `config/dispatch.json` — never hardcode model IDs in prompts or edits to this skill.
+- On Claude and Codex runtimes, all model choices come from `config/dispatch.json` (`tiers` / `codex_tiers`) — never hardcode model IDs in prompts or edits to this skill.
