@@ -13,9 +13,9 @@
 
 Beyond `deep`: effort **`ultra`** on sol spawns parallel delegate subagents — a different execution mode, not just more thinking. It is slow and the most expensive option there is. **Opt-in only**, for plan-level/architecture-level passes on very large PRs; never route ordinary review dimensions to it.
 
-Also available:
-- `gpt-5.5` — previous flagship, still served, no deprecation. Use as a pinned fallback when a 5.6 model misbehaves.
-- `gpt-5.3-codex-spark` — near-instant, text-only. Sanity checks and trivial-review fast paths.
+Also available: `gpt-5.3-codex-spark` — near-instant, text-only; sanity checks and trivial-review fast paths.
+
+Do **not** route to `gpt-5.5` or older generations — the 5.6 family only. If a 5.6 model misbehaves on a task, fall back within the family (sol ↔ terra), never to a prior generation.
 
 **Verify before trusting this table on a new machine or after a model-generation bump:** `~/.codex/models_cache.json` is the Codex CLI's own authoritative model list; confirm a candidate with `codex exec --skip-git-repo-check -m <id> -c model_reasoning_effort=low "Reply OK" </dev/null`. Never guess model IDs from training data.
 

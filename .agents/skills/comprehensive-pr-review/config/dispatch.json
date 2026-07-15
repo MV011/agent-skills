@@ -77,7 +77,7 @@
     }
   },
   "codex_tiers": {
-    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallback/pin model: gpt-5.5. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
+    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallbacks stay within the 5.6 family (sol <-> terra); never route to gpt-5.5 or older. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
     "cheap": {
       "model": "gpt-5.6-luna",
       "effort": "low",

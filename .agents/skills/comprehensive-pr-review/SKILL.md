@@ -15,7 +15,7 @@ This skill performs an intelligent, multi-agent code review before merging a bra
 |---|---|
 | `config/dispatch.json` | Selecting agents or models — limits, thresholds, risk paths, task routing |
 | `references/model-routing-claude.md` | Running on a **Claude runtime**, before any dispatch — tier→model table, escalation ladder, refusal mechanics |
-| `references/model-routing-codex.md` | Running on a **Codex runtime**, or cross-dispatching leaves through the Codex CLI (GPT-5.5/5.6 lineup) — tier→model table, effort ceilings, headless `codex exec` mechanics |
+| `references/model-routing-codex.md` | Running on a **Codex runtime**, or cross-dispatching leaves through the Codex CLI (GPT-5.6 lineup) — tier→model table, effort ceilings, headless `codex exec` mechanics |
 | `references/triage.md` | Performing Step 2 — full heuristics and the triage-plan schema |
 | `references/quality-gates.md` | Performing Step 3 — full Semgrep/LucidShark commands, installs, result handling |
 | `references/agent-prompts.md` | Dispatching specialized agents (security/perf/migration) or implementation agents — templates and the finding metadata contract |
