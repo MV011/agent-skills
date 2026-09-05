@@ -1,13 +1,14 @@
 {
   "notes": [
     "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md); Gemini in 'gemini_tiers' (references/model-routing-gemini.md); Grok in 'grok_tiers' (references/model-routing-grok.md). Other runtimes map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
+    "Claude reviews run strictly on Opus 5 and Fable 5.1; Sonnet 5 is restricted to the very low end (cheap tier: triage, mechanical work, patch application).",
     "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
     "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run."
   ],
   "limits": {
     "max_concurrent_agents": 6,
     "max_fable_dispatches": 3,
-    "sonnet_effort_ceiling": "high",
+    "sonnet_effort_ceiling": "low",
     "impl_failures_before_escalation": 2
   },
   "triage_thresholds": {
@@ -56,24 +57,24 @@
   ],
   "tiers": {
     "cheap": {
-      "model": "claude-haiku-4-5",
-      "claude_code": "haiku",
-      "notes": "Triage, patch application, mechanical work. NEVER attach an effort value — Haiku 4.5 rejects the effort parameter."
-    },
-    "standard": {
       "model": "claude-sonnet-5",
       "claude_code": "sonnet",
-      "notes": "Most review dimensions. Effort low/medium/high only — never xhigh (costs more than Opus at comparable accuracy; escalate to 'strong' instead). Ships cyber safeguards, so it CAN refuse — fallback is Opus 5."
+      "notes": "Very low end: triage, mechanical work, patch application, trivial passes. Effort low only. Substantive reviews never run on Sonnet."
+    },
+    "standard": {
+      "model": "claude-opus-5",
+      "claude_code": "opus",
+      "notes": "Core review workhorse for all standard dimensions (logic, silent failure, tests, performance, types, style, comments). Full Opus-class depth with zero classifier-refusal risk."
     },
     "strong": {
       "model": "claude-opus-5",
       "claude_code": "opus",
-      "notes": "Coordinator, adjudication, and universal fallback. No meaningful classifier-refusal risk in normal PR review — the safe choice for anything that must not stall."
+      "notes": "Coordinator, adjudication, and universal fallback. Safe and reliable for orchestrating the run."
     },
     "deep": {
       "model": "claude-fable-5-1",
       "claude_code": "fable",
-      "notes": "Risk-surface review only. Fable 5.1 refuses fewer legitimate checks than 5.0, but when safety classifiers do trigger on security-adjacent content, fallback is Opus 5. Mandatory 30-day retention, no ZDR. Expensive."
+      "notes": "Risk-surface review (security, migrations) and architectural deep dives. Fable 5.1 refuses fewer legitimate checks than 5.0, but when safety classifiers trigger on security-adjacent content, fallback is Opus 5. Mandatory 30-day retention, no ZDR. Expensive."
     }
   },
   "codex_tiers": {
@@ -152,14 +153,14 @@
     "migration-review": { "tier": "deep", "fallback": { "tier": "strong" } },
     "logic-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
     "silent-failure-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
-    "test-review": { "tier": "standard", "effort": "medium", "fallback": { "tier": "standard", "effort": "high" } },
+    "test-review": { "tier": "standard", "effort": "medium", "fallback": { "tier": "strong" } },
     "type-design-review": { "tier": "standard", "effort": "medium", "fallback": null },
     "performance-review": { "tier": "standard", "effort": "medium", "fallback": null },
     "dependency-review": { "tier": "standard", "effort": "medium", "fallback": null },
     "style-review": { "tier": "standard", "effort": "low", "fallback": null },
     "comment-review": { "tier": "standard", "effort": "low", "fallback": null },
-    "deep-dive": { "tier": "strong", "fallback": null },
-    "trivial-review": { "tier": "standard", "effort": "low", "fallback": null },
+    "deep-dive": { "tier": "deep", "fallback": { "tier": "strong" } },
+    "trivial-review": { "tier": "cheap", "effort": "low", "fallback": null },
     "apply-patch": { "tier": "cheap", "fallback": { "tier": "standard", "effort": "low" } }
   },
   "sensitive_repo": false

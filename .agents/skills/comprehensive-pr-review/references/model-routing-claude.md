@@ -4,12 +4,14 @@
 
 ## Tier → model mapping (current as of September 2026)
 
+Claude code reviews run **strictly on Opus 5 and Fable 5.1**. Sonnet 5 is restricted to the **very low end** (`cheap` tier only: triage, single-file patch application, mechanical tasks). Substantive review dimensions never run on Sonnet.
+
 | Tier | API model ID | Claude Code Task `model` | Role | Key constraints |
 |---|---|---|---|---|
-| `cheap` | `claude-haiku-4-5` | `haiku` | Triage, patch application, mechanical retries | **Never pass an effort value** — Haiku 4.5 rejects the effort parameter (400) |
-| `standard` | `claude-sonnet-5` | `sonnet` | Most review dimensions | Effort `low`/`medium`/`high` only (see cost trap below). Ships cyber safeguards — **can refuse**; fallback is Opus 5 |
-| `strong` | `claude-opus-5` | `opus` | Coordinator, adjudication, universal fallback | No meaningful dual-use classifier refusal risk in normal PR review. The safe choice for anything that must not stall |
-| `deep` | `claude-fable-5-1` | `fable` | Risk-surface security/migration review only | Fable 5.1 refuses fewer legitimate checks than 5.0, but dual-use classifiers can still trigger on security-adjacent diffs. Fallback is Opus 5. Mandatory 30-day retention, no ZDR. Expensive |
+| `cheap` | `claude-sonnet-5` | `sonnet` | Very low end: triage, patch application, mechanical retries, trivial pass | Effort `low` only. Relegated strictly to low-end mechanical and triage work |
+| `standard` | `claude-opus-5` | `opus` | Core review dimensions (logic, silent failure, tests, performance, types, style, comments) | Primary review workhorse. Highest code reasoning fidelity, zero classifier refusal risk in normal reviews |
+| `strong` | `claude-opus-5` | `opus` | Coordinator, adjudication, universal fallback | Safe, robust coordinator that never stalls on dual-use classifiers |
+| `deep` | `claude-fable-5-1` | `fable` | Risk-surface security/migration review and architectural deep dives | Deepest reasoning for vulnerability and data invariant analysis. Fallback is Opus 5. Mandatory 30-day retention, no ZDR. Expensive |
 
 When dispatching with Claude Code's Task/Agent tool, pass the shorthand from the third column as the `model` parameter.
 
@@ -17,16 +19,16 @@ When dispatching with Claude Code's Task/Agent tool, pass the shorthand from the
 
 1. **Coordinator = `strong` (Opus 5). Never Fable, never Sonnet.** A classifier refusal at the coordinator kills orchestration state; a refusal at a leaf is a cheap retry.
    - In Claude Code the coordinator *is* the main session model, and this skill cannot change it. If the session runs on Fable and the PR is security-heavy, recommend the user switch (`/model opus`) before the run. Either way, keep coordinator prose neutral: adjudicate finding *metadata* (severity, confidence, file:line), never restate exploit payloads or attack narratives in coordinator text — that detail stays inside leaf reports. This contains any refusal to a single leaf instead of downgrading the whole run.
-2. **Sonnet effort ceiling is `high`. Never route to Sonnet at `xhigh`** — Sonnet 5 at xhigh can cost more than Opus 5 at comparable accuracy. When a task needs more than Sonnet-high, the next rung is Opus 5.
-3. **Escalation ladder (one rung at a time):** Sonnet low → Sonnet medium → Sonnet high → Opus 5 → Fable 5.1. Promote a task one rung when (a) the agent self-reports low confidence on its own findings, or (b) its verification gate fails twice (`limits.impl_failures_before_escalation`). Never skip rungs to Fable — risk-surface work is the only thing that *starts* on Fable.
-4. **Refusals fall back to Opus 5:** While Fable 5.1 refuses significantly fewer legitimate checks than 5.0, any refusal on Fable 5.1 or Sonnet 5 retries on **Opus 5** (`strong` tier).
+2. **Sonnet 5 is restricted to the very low end (`cheap` tier).** Never route substantive review dimensions to Sonnet. Reviews run on Opus 5 (`standard`) and Fable 5.1 (`deep`). Sonnet effort ceiling is capped at `low`.
+3. **Escalation ladder (one rung at a time):** Sonnet low (cheap/mechanical) → Opus 5 (standard/strong review dimensions) → Fable 5.1 (deep risk-surface review).
+4. **Refusals fall back to Opus 5:** While Fable 5.1 refuses significantly fewer legitimate checks than 5.0, any refusal on Fable 5.1 retries on **Opus 5** (`strong` tier).
 5. **Fable cap:** at most `limits.max_fable_dispatches` Fable dispatches per run (default 3). If triage selects more risk-surface file groups than the cap, merge groups into fewer dispatches or send the overflow to Opus 5.
 6. **`sensitive_repo: true`** removes Fable from every route (its 30-day retention requirement is incompatible with ZDR policies) — those tasks go to Opus 5 instead. Set per repo in `config/dispatch.json`.
 7. **Concurrency:** `limits.max_concurrent_agents` (default 6) caps *simultaneous* dispatches, not the run total. A 12-agent plan runs in waves of ≤6, queuing the rest as slots free up.
 
 ## Refusal & failure handling (mechanics)
 
-Both Fable 5.1 and Sonnet 5 can refuse. On the API this is `stop_reason: "refusal"` returned as HTTP 200; in Claude Code it surfaces as a subagent that declines the task or returns refusal language instead of findings. For **every** leaf dispatch:
+Fable 5.1 can refuse on security-adjacent diffs. On the API this is `stop_reason: "refusal"` returned as HTTP 200; in Claude Code it surfaces as a subagent that declines the task or returns refusal language instead of findings. For **every** leaf dispatch:
 
 1. On refusal or hard failure, retry the **identical** task once on `strong` (`claude-opus-5`).
 2. Tag every finding produced by the retry `degraded: true` and record which model actually produced it (e.g. `opus-5`).
@@ -45,7 +47,7 @@ Both Fable 5.1 and Sonnet 5 can refuse. On the API this is `stop_reason: "refusa
 | `medium` | "Balance depth and speed; investigate anything suspicious one level deep." | `output_config: {effort: "medium"}` |
 | `high` | "Be thorough: trace data flows and edge cases before reporting." | `output_config: {effort: "high"}` |
 
-Never attach effort to `cheap` (Haiku rejects it). Never use `xhigh`/`max` on `standard` (Sonnet) — escalate the tier instead.
+Sonnet 5 (`cheap`): effort `low` only. Opus 5 (`standard`/`strong`): effort `medium` or `high`. Fable 5.1 (`deep`): effort `high` or `max`.
 
 ## Sonnet 5 API notes (direct API dispatch only)
 
