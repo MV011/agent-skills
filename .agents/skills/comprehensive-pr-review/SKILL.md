@@ -38,10 +38,10 @@ This skill runs on any agent runtime. Model selection is expressed as **abstract
 - **`deep`** — the strongest available model, reserved for risk-surface (security/migration) review
 
 Runtime-specific mappings are configured in `config/dispatch.json` and detailed in `references/`:
-- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything**, and follow them exactly — they encode the tier→model mapping (Haiku 4.5, Sonnet 5, Opus 4.8, Fable 5.1), the escalation ladder, refusal handling, and cost rules.
+- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything**, and follow them exactly — they encode the tier→model mapping (Haiku 4.5, Sonnet 5, Opus 5, Fable 5.1), the escalation ladder, Opus 5 refusal fallback, and cost rules.
 - **On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-5.6 / GPT-6 Astra tier→model mapping (luna/terra/sol/astra + max efforts), the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
-- **On a Gemini runtime** (Gemini CLI, Antigravity): read `references/model-routing-gemini.md` and the `gemini_tiers` block in `config/dispatch.json` — maps abstract tiers to Gemini 3.8 Flash-Lite, Flash (high reasoning), and Pro.
-- **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 3 Mini, Grok 3, and Grok 3 DeepSearch.
+- **On a Gemini runtime** (Gemini CLI, Antigravity): read `references/model-routing-gemini.md` and the `gemini_tiers` block in `config/dispatch.json` — maps abstract tiers to Gemini 3.8 Flash (low/high reasoning) and Gemini 3.1 Pro (3.8 Pro is not yet released).
+- **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 4.6 (with Grok 4.7 upcoming upon release).
 - **On any other runtime** (Cursor, etc.): map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
 
 **Universal rules (all runtimes):**
@@ -228,10 +228,10 @@ After all agents complete (or degrade), consolidate:
 | # | Severity | File:Line | Issue | Agent(s) | Model (effort) | Confidence | Degraded |
 |---|----------|-----------|-------|----------|----------------|------------|----------|
 | 1 | CRITICAL | cli.ts:56 | Duplicate key assigns wrong IDs | Quality, SilentFailure | sonnet-5 (high) | 95% | — |
-| 2 | HIGH | auth/session.ts:88 | Token compared with == not constant-time | Security | opus-4.8 | 85% | yes |
+| 2 | HIGH | auth/session.ts:88 | Token compared with == not constant-time | Security | opus-5 | 85% | yes |
 
 ## Degradations & Coverage Gaps
-- security-review: fable-5 refused (classifier); retried on opus-4.8 — findings above tagged degraded
+- security-review: fable-5-1 refused (classifier); retried on opus-5 — findings above tagged degraded
 - {or: "none"}
 
 ## Gate Results
