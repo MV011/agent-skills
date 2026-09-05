@@ -1,6 +1,6 @@
 {
   "notes": [
-    "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md). Other runtimes (Cursor, Gemini, ...) ignore both and map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
+    "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md); Gemini in 'gemini_tiers' (references/model-routing-gemini.md); Grok in 'grok_tiers' (references/model-routing-grok.md). Other runtimes map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
     "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
     "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run."
   ],
@@ -71,13 +71,13 @@
       "notes": "Coordinator, adjudication, and universal fallback. No meaningful classifier-refusal risk in normal PR review — the safe choice for anything that must not stall."
     },
     "deep": {
-      "model": "claude-fable-5",
+      "model": "claude-fable-5-1",
       "claude_code": "fable",
       "notes": "Risk-surface review only. Safety classifiers can refuse security-adjacent content (elevated false positives on auth/vulns/injection). Mandatory 30-day retention, no ZDR. Expensive."
     }
   },
   "codex_tiers": {
-    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallbacks stay within the 5.6 family (sol <-> terra); never route to gpt-5.5 or older. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
+    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallbacks stay within the 5.6 and 6.x Astra lineup (astra <-> sol <-> terra); never route to gpt-5.5 or older. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
     "cheap": {
       "model": "gpt-5.6-luna",
       "effort": "low",
@@ -86,17 +86,63 @@
     "standard": {
       "model": "gpt-5.6-terra",
       "effort": "medium",
-      "notes": "Most review dimensions; effort up to 'high'. GPT-5.5-class capability at ~half cost."
+      "notes": "Most review dimensions; effort up to 'high'. Solid everyday capability at reasonable cost."
     },
     "strong": {
       "model": "gpt-5.6-sol",
       "effort": "high",
-      "notes": "Adjudication-grade review and universal fallback; effort up to 'xhigh'. Also the vision tier (attach images with -i) — GPT vision outperforms Claude Opus 4.8 on screenshot/UI review."
+      "notes": "Adjudication-grade review and universal fallback; effort up to 'xhigh'. Also the vision tier (attach images with -i) — GPT vision outperforms Claude Opus 4.8 on screenshot/UI review. When quota allows, gpt-6-astra (effort: medium/high) can also serve as strong tier."
     },
     "deep": {
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-astra",
       "effort": "max",
-      "notes": "Risk-surface review. 'ultra' (parallel delegate subagents) is opt-in only for plan-level passes — never an automatic escalation."
+      "notes": "Risk-surface review (security, migrations). Flagship model with reasoning levels low..max. Fallback: gpt-5.6-sol (effort: max)."
+    }
+  },
+  "gemini_tiers": {
+    "notes": "Model routing for Gemini runtimes (Gemini CLI, Antigravity). Maps abstract tiers to Gemini 3.8/Flash/Pro lineup.",
+    "cheap": {
+      "model": "gemini-3.8-flash-lite",
+      "effort": "low",
+      "notes": "Triage, mechanical checks, patch application."
+    },
+    "standard": {
+      "model": "gemini-3.8-flash",
+      "effort": "high",
+      "notes": "Most review dimensions (logic, silent failure, style, comment, tests)."
+    },
+    "strong": {
+      "model": "gemini-3.8-pro",
+      "effort": "high",
+      "notes": "Coordinator, adjudication, universal fallback."
+    },
+    "deep": {
+      "model": "gemini-3.8-pro",
+      "effort": "max",
+      "notes": "Risk-surface review (security, migrations) with maximum reasoning depth."
+    }
+  },
+  "grok_tiers": {
+    "notes": "Model routing for xAI / Grok runtimes. Maps abstract tiers to Grok 3 lineup.",
+    "cheap": {
+      "model": "grok-3-mini",
+      "effort": "low",
+      "notes": "Triage, mechanical checks, patch application."
+    },
+    "standard": {
+      "model": "grok-3",
+      "effort": "medium",
+      "notes": "Most review dimensions."
+    },
+    "strong": {
+      "model": "grok-3",
+      "effort": "high",
+      "notes": "Coordinator, adjudication, universal fallback."
+    },
+    "deep": {
+      "model": "grok-3-deepsearch",
+      "effort": "high",
+      "notes": "Risk-surface review (security, migrations) with extended thinking/deep search."
     }
   },
   "tasks": {

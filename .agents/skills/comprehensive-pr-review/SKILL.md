@@ -15,7 +15,9 @@ This skill performs an intelligent, multi-agent code review before merging a bra
 |---|---|
 | `config/dispatch.json` | Selecting agents or models — limits, thresholds, risk paths, task routing |
 | `references/model-routing-claude.md` | Running on a **Claude runtime**, before any dispatch — tier→model table, escalation ladder, refusal mechanics |
-| `references/model-routing-codex.md` | Running on a **Codex runtime**, or cross-dispatching leaves through the Codex CLI (GPT-5.6 lineup) — tier→model table, effort ceilings, headless `codex exec` mechanics |
+| `references/model-routing-codex.md` | Running on a **Codex runtime**, or cross-dispatching leaves through the Codex CLI (GPT-5.6 & GPT-6 Astra lineup) — tier→model table, effort ceilings, headless `codex exec` mechanics |
+| `references/model-routing-gemini.md` | Running on a **Gemini runtime** (Gemini CLI / Antigravity) — tier→model table, effort mapping |
+| `references/model-routing-grok.md` | Running on an **xAI / Grok runtime** — tier→model table, reasoning settings |
 | `references/triage.md` | Performing Step 2 — full heuristics and the triage-plan schema |
 | `references/quality-gates.md` | Performing Step 3 — full Semgrep/LucidShark commands, installs, result handling |
 | `references/agent-prompts.md` | Dispatching specialized agents (security/perf/migration) or implementation agents — templates and the finding metadata contract |
@@ -35,11 +37,12 @@ This skill runs on any agent runtime. Model selection is expressed as **abstract
 - **`strong`** — the coordinator, adjudication, and the universal fallback (must be a model that will not refuse ordinary review work)
 - **`deep`** — the strongest available model, reserved for risk-surface (security/migration) review
 
-**On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` **before dispatching anything**, and follow them exactly — they encode the tier→model mapping, the escalation ladder, refusal handling, and cost rules.
-
-**On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-5.6 tier→model mapping (luna/terra/sol + max/ultra efforts), the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
-
-**On any other runtime** (Cursor, Gemini CLI, ...): do not read either routing file. Map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
+Runtime-specific mappings are configured in `config/dispatch.json` and detailed in `references/`:
+- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything**, and follow them exactly — they encode the tier→model mapping (Haiku 4.5, Sonnet 5, Opus 4.8, Fable 5.1), the escalation ladder, refusal handling, and cost rules.
+- **On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-5.6 / GPT-6 Astra tier→model mapping (luna/terra/sol/astra + max efforts), the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
+- **On a Gemini runtime** (Gemini CLI, Antigravity): read `references/model-routing-gemini.md` and the `gemini_tiers` block in `config/dispatch.json` — maps abstract tiers to Gemini 3.8 Flash-Lite, Flash (high reasoning), and Pro.
+- **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 3 Mini, Grok 3, and Grok 3 DeepSearch.
+- **On any other runtime** (Cursor, etc.): map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
 
 **Universal rules (all runtimes):**
 - `limits.max_concurrent_agents` (default 6) caps **simultaneous** dispatches, not the total: a 12-agent plan runs in waves of ≤6.
