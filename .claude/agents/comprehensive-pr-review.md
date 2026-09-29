@@ -48,13 +48,16 @@ This skill runs on any agent runtime. Model selection is expressed as **abstract
 - **`cheap`** — triage, patch application, mechanical work
 - **`standard`** — most review dimensions
 - **`strong`** — the coordinator, adjudication, and the universal fallback (must be a model that will not refuse ordinary review work)
+- **`heavy`** — one rung below deep, used where needed: the large-PR `deep-dive`, fallback when a `deep` dispatch fails, deep-tier overflow. Runtimes with no rung between strong and deep map it up to deep
 - **`deep`** — the strongest available model, reserved for risk-surface (security/migration) review
 
+Effort policy: when a model generation gets cheaper, spend the savings on effort; never lower effort to exploit newer-model efficiency. If a runtime lacks a requested effort level, round up to the nearest supported one, within that runtime's ceiling.
+
 Runtime-specific mappings are configured in `config/dispatch.json` and detailed in `references/`:
-- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything** — reviews run strictly on Opus 5 and Fable 5.1, with Sonnet 5 reserved exclusively for the very low end (`cheap` tier: triage, patch application), and Opus 5 as the refusal fallback.
-- **On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-5.6 / GPT-6 Astra tier→model mapping (luna/terra/sol/astra + max efforts), the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
+- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything** — Sonnet 5.5 is the Claude floor and runs `search` plus `cheap` (triage, trivial pass, patch application); review dimensions run on Opus 5.5 (`standard`…`heavy`, split by effort) and Fable 5.1 (`deep`), with Opus 5.5 as the refusal fallback. Sonnet and Opus top out at `xhigh`, never `max`. Sonnet 5 / Haiku 4.5 are not used.
+- **On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the GPT-6 tier→model mapping (gpt-6-luna high / gpt-6-sol high / gpt-6-sol xhigh / gpt-6-astra high / gpt-6-astra max; gpt-5.6-terra as fallback) and the per-task `codex` overrides, the escalation ladder, and the headless dispatch mechanics (read-only sandbox for review leaves, stdin/PID hygiene).
 - **On a Gemini runtime** (Gemini CLI, Antigravity): read `references/model-routing-gemini.md` and the `gemini_tiers` block in `config/dispatch.json` — maps abstract tiers to Gemini 3.8 Flash (low/high reasoning) and Gemini 3.1 Pro (3.8 Pro is not yet released).
-- **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 4.6 (with Grok 4.7 upcoming upon release).
+- **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 4.7 (efforts low…xhigh; `max` is rejected).
 - **On any other runtime** (Cursor, etc.): map the four tiers onto the model lineup your runtime offers (cheapest → `cheap`, default → `standard`, strongest reliable → `strong` and `deep`). All other rules in this skill — triage, caps, the refusal/degraded loop, report format — apply unchanged.
 
 **Universal rules (all runtimes):**
@@ -162,7 +165,7 @@ Selection is driven by the triage plan. Task names below key into `config/dispat
 | DB migrations present | `migration-review` | Migration Integrity Reviewer — deep tier |
 | 5+ files changed | `performance-review` | Performance Reviewer |
 | Dependencies touched | `dependency-review` | Dependency Pattern Checker |
-| Large PR verdict | `deep-dive` | Implementation-Specific Deep Dive — architectural decisions specific to what was built |
+| Large PR verdict | `deep-dive` | Implementation-Specific Deep Dive — architectural decisions specific to what was built (`heavy` tier) |
 
 ### Scale by PR size
 
@@ -174,14 +177,14 @@ Selection is driven by the triage plan. Task names below key into `config/dispat
 | Large | 16-30 | 7-9 agents, sharded by module |
 | XL | 30+ | 9-12 agents, sharded by module + cross-shard pass |
 
-Total agent count may exceed `max_concurrent_agents` — that cap only bounds how many run at once. Respect `max_fable_dispatches` (deep-tier cap) on Claude runtimes: merge risk-surface file groups or overflow to the strong tier.
+Total agent count may exceed `max_concurrent_agents` — that cap only bounds how many run at once. Respect `max_fable_dispatches` (deep-tier cap) on Claude runtimes: merge risk-surface file groups or overflow to the `heavy` tier.
 
 ## Step 5: Dispatch Agents in Parallel
 
 Launch the selected reviewers in waves of ≤ `max_concurrent_agents`, using whatever agent/subagent mechanism the runtime provides. Each reviewer runs in its own context and must not modify files. Pass per dispatch:
 
 - `role`/`specialization`: the reviewer capability from Step 4
-- `model`: resolved from the task's tier (Claude runtimes: per `references/model-routing-claude.md`; Codex/GPT dispatch: per `references/model-routing-codex.md`)
+- `model`: resolved from the task's tier (Claude runtimes: per `references/model-routing-claude.md`; Codex/GPT dispatch: per `references/model-routing-codex.md`, applying the task's `codex` override block if present)
 - `prompt`: the template below with files and focus areas; add effort/depth instructions per the routing file
 - `label`: descriptive name for tracking (e.g., `silent-failure-hunter`)
 
@@ -240,11 +243,11 @@ After all agents complete (or degrade), consolidate:
 
 | # | Severity | File:Line | Issue | Agent(s) | Model (effort) | Confidence | Degraded |
 |---|----------|-----------|-------|----------|----------------|------------|----------|
-| 1 | CRITICAL | cli.ts:56 | Duplicate key assigns wrong IDs | Quality, SilentFailure | opus-5 | 95% | — |
-| 2 | HIGH | auth/session.ts:88 | Token compared with == not constant-time | Security | opus-5 | 85% | yes |
+| 1 | CRITICAL | cli.ts:56 | Duplicate key assigns wrong IDs | Quality, SilentFailure | opus-5-5 (high) | 95% | — |
+| 2 | HIGH | auth/session.ts:88 | Token compared with == not constant-time | Security | opus-5-5 (xhigh) | 85% | yes |
 
 ## Degradations & Coverage Gaps
-- security-review: fable-5-1 refused (classifier); retried on opus-5 — findings above tagged degraded
+- security-review: fable-5-1 refused (classifier); retried on opus-5-5 — findings above tagged degraded
 - {or: "none"}
 
 ## Gate Results

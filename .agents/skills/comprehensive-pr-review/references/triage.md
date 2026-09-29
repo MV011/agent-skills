@@ -26,7 +26,7 @@ git diff HEAD --name-only                   # uncommitted work counts too
 | **Trivial** | Within trivial thresholds AND zero risk-path hits AND no behavior change | Single `trivial-review` pass. No fan-out. |
 | **Typical** | Everything else | One agent per applicable dimension (Step 4 table in SKILL.md), grouped by module if the PR spans several. |
 | **Risk-surface** | Any `risk_paths` hit — at any size, even trivial | ALWAYS add `security-review` (deep tier) scoped to **just the matched files**, on top of whatever the size verdict selects. |
-| **Large** | At/above large thresholds | Shard by module/package: one agent per shard per applicable dimension. Add a coordinator **cross-shard consistency pass** after leaves return (naming, duplicated logic, contract mismatches across shards). |
+| **Large** | At/above large thresholds | Shard by module/package: one agent per shard per applicable dimension. Add a coordinator **cross-shard consistency pass** after leaves return (naming, duplicated logic, contract mismatches across shards). Add one `deep-dive` on the `heavy` tier. |
 
 ## Triage plan — structured block
 
@@ -43,9 +43,9 @@ triage:
   verdict: typical          # trivial | typical | large
   plan:
     - { task: security-review, tier: deep, files: ["api/src/auth/**"], reason: "risk path **/auth/** matched" }
-    - { task: logic-review, tier: standard, effort: high, files: ["api/src/**", "web/src/**"], reason: "always-on" }
-    - { task: silent-failure-review, tier: standard, effort: high, files: ["api/src/**"], reason: "always-on" }
-    - { task: test-review, tier: standard, effort: medium, files: ["**"], reason: "test delta not proportional" }
+    - { task: logic-review, tier: standard, effort: xhigh, files: ["api/src/**", "web/src/**"], reason: "always-on" }
+    - { task: silent-failure-review, tier: standard, effort: xhigh, files: ["api/src/**"], reason: "always-on" }
+    - { task: test-review, tier: standard, effort: high, files: ["**"], reason: "test delta not proportional" }
 ```
 
 On non-Claude runtimes, replace `tier` values with the runtime's mapped models — the plan structure stays the same.

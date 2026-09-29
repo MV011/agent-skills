@@ -9,6 +9,7 @@
 | `cheap` | `gemini-3.8-flash` | `low` | Triage, patch application, mechanical checks | Fastest turnaround with minimal thinking overhead |
 | `standard` | `gemini-3.8-flash` | `high` | Most review dimensions (logic, silent failure, style, tests) | High reasoning everyday code reviewer |
 | `strong` | `gemini-3.1-pro` | `high` | Coordinator, adjudication, universal fallback | Strong cross-file reasoning and large-context synthesis (3.8 Pro is not yet released) |
+| `heavy` | `gemini-3.1-pro` | `max` | Large-PR deep dive, deep fallback | No rung between strong (high) and deep (max), so heavy maps up to deep settings. A task effort of `xhigh` also rounds up to `max` |
 | `deep` | `gemini-3.1-pro` | `max` | Risk-surface (security/migration) review | Maximum thinking depth for invariant analysis (upgrade to 3.8 Pro upon release) |
 
 ## Hard rules

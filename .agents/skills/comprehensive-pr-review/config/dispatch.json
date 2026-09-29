@@ -1,14 +1,16 @@
 {
   "notes": [
     "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md); Gemini in 'gemini_tiers' (references/model-routing-gemini.md); Grok in 'grok_tiers' (references/model-routing-grok.md). Other runtimes map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
-    "Claude reviews run strictly on Opus 5 and Fable 5.1; Sonnet 5 is restricted to the very low end (cheap tier: triage, mechanical work, patch application).",
+    "Tier order: cheap < standard < strong < heavy < deep. 'heavy' (added 2026-09-22) = one rung below deep: gpt-6-astra high on Codex, Opus 5.5 at xhigh on Claude (keeps the Fable budget for risk surface; Opus tops out at xhigh, so on Claude heavy runs the same model and effort as strong). Runtimes with no rung between strong and deep (Grok, Gemini) map heavy UP to their deep settings.",
+    "Claude floor is Sonnet 5.5 (Bogdan 2026-09-29: 'with sonnet 5.5 being good, we can use it as the lowest allowed claude model'). Sonnet 5.5 runs 'search' and 'cheap' (triage, trivial pass, patch application); every review dimension runs on Opus 5.5 (standard/strong/heavy) or Fable 5.1 (deep). Sonnet 5 and Haiku 4.5 are not used for any review role. Haiku 5.5 takes simple tasks once it ships. Sonnet and Opus top out at xhigh, never max (Bogdan 2026-09-29: 'they perform their best at xhigh'); max is Fable-only on Claude.",
     "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
-    "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run."
+    "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run.",
+    "Per-runtime task overrides: a task may carry a 'codex' block ({tier, effort}) that replaces the task's tier/effort ONLY for Codex runtimes / codex-exec cross-dispatch. Resolution order on Codex: task.codex.effort > task.codex.tier's codex effort > task.effort > codex_tiers[tier].effort. Other runtimes ignore the block.",
+    "Effort policy (Bogdan 2026-09-22): Opus 5.5 and gpt-6-sol are cheaper than what they replaced, so spend the savings on effort; never lower effort to exploit newer-model efficiency. Task efforts were each raised one rung that day. If a runtime lacks a requested level, round UP to the nearest one it supports (e.g. Gemini xhigh -> max) except where a ceiling applies (grok-4.7 tops at xhigh). Ceiling (Bogdan 2026-09-29): Sonnet 5.5 and Opus 5.5 top out at xhigh, never max; Fable 5.1 keeps max on deep."
   ],
   "limits": {
     "max_concurrent_agents": 6,
     "max_fable_dispatches": 3,
-    "sonnet_effort_ceiling": "low",
     "impl_failures_before_escalation": 2
   },
   "triage_thresholds": {
@@ -56,48 +58,69 @@
     "**/*.generated.*"
   ],
   "tiers": {
-    "cheap": {
-      "model": "claude-sonnet-5",
+    "search": {
+      "model": "claude-sonnet-5-5",
       "claude_code": "sonnet",
-      "notes": "Very low end: triage, mechanical work, patch application, trivial passes. Effort low only. Substantive reviews never run on Sonnet."
+      "effort": "low",
+      "notes": "Claude-only helper role, not a review tier: codebase search / file location / exploration subagents (e.g. Explore). Never produces findings. Sonnet 5.5 replaced Sonnet 5 on 2026-09-29."
+    },
+    "cheap": {
+      "model": "claude-sonnet-5-5",
+      "claude_code": "sonnet",
+      "effort": "high",
+      "notes": "Triage, patch application, trivial pass. Sonnet 5.5 (the Claude floor, $2/$10) replaced Opus 5.5 medium on 2026-09-29; half the price, so the savings go into effort (medium -> high). Sonnet 5.5 carries five refusal categories (cyber, bio, frontier_llm, reasoning_extraction, general_harms), so cheap tasks fall back to 'standard' (Opus 5.5)."
     },
     "standard": {
-      "model": "claude-opus-5",
+      "model": "claude-opus-5-5",
       "claude_code": "opus",
-      "notes": "Core review workhorse for all standard dimensions (logic, silent failure, tests, performance, types, style, comments). Full Opus-class depth with zero classifier-refusal risk."
+      "notes": "Core review workhorse for all standard dimensions (logic, silent failure, tests, performance, types, style, comments). Opus 5.5 is Fable-5.1-class on most benchmarks at $4/$20 (cheaper than Opus 5). Its API default effort is 'medium' (Opus 5 was 'high'), so always state the effort explicitly.",
+      "effort": "high"
     },
     "strong": {
-      "model": "claude-opus-5",
+      "model": "claude-opus-5-5",
       "claude_code": "opus",
-      "notes": "Coordinator, adjudication, and universal fallback. Safe and reliable for orchestrating the run."
+      "notes": "Coordinator, adjudication, universal fallback, and deep-tier overflow once max_fable_dispatches is spent (effort high/xhigh). Opus 5.5 carries broader safety classifiers than Opus 5 (cyber + bio + reasoning_extraction), so keep coordinator prose neutral and let the refusal loop handle leaves.",
+      "effort": "xhigh"
+    },
+    "heavy": {
+      "model": "claude-opus-5-5",
+      "claude_code": "opus",
+      "effort": "xhigh",
+      "notes": "One rung below deep: large-PR deep dives, deep-tier fallback, Fable-cap overflow. Opus 5.5 at xhigh, its ceiling (Bogdan 2026-09-29: no Opus max), so on Claude this matches strong; it spends no max_fable_dispatches slot. Effort is prompt-encoded on Claude Code."
     },
     "deep": {
       "model": "claude-fable-5-1",
       "claude_code": "fable",
-      "notes": "Risk-surface review (security, migrations) and architectural deep dives. Fable 5.1 refuses fewer legitimate checks than 5.0, but when safety classifiers trigger on security-adjacent content, fallback is Opus 5. Mandatory 30-day retention, no ZDR. Expensive."
+      "notes": "Risk-surface review (security, migrations) and architectural deep dives. Refusal fallback is Opus 5.5 (strong). Mandatory 30-day retention, no ZDR. Most expensive tier ($10/$50), so it stays capped by max_fable_dispatches.",
+      "effort": "max"
     }
   },
   "codex_tiers": {
-    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. Fallbacks stay within the 5.6 and 6.x Astra lineup (astra <-> sol <-> terra); never route to gpt-5.5 or older. Verify IDs against ~/.codex/models_cache.json after any model-generation bump.",
+    "notes": "Always pass -m and model_reasoning_effort explicitly (never inherit ~/.codex/config.toml defaults). Review leaves run '-s read-only'. GPT-6 lineup: luna (cheap) / sol (standard + strong, split by effort) / astra (deep). Official API pricing (developers.openai.com, 2026-09-22): gpt-6-sol $2/$10, gpt-6-luna $0.10/$0.50, gpt-6-astra $10/$50 per 1M in/out; prompts over 272K input tokens bill 2x input / 1.5x output. gpt-6-sol undercuts gpt-5.6-terra ($2/$12), so terra is fallback-only. Fallbacks stay within GPT-6 and 5.6 (astra <-> gpt-6-sol <-> gpt-5.6-sol/terra); never route to gpt-5.5 or older. Verify IDs against ~/.codex/models_cache.json after any model-generation bump (gpt-6-sol/luna live-probed 2026-09-22).",
     "cheap": {
-      "model": "gpt-5.6-luna",
-      "effort": "low",
-      "notes": "Triage, mechanical checks, patch application. 'medium' for larger shards. Cheapest tier; 'ultra' accepted but may clamp to max."
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "notes": "Triage, mechanical checks, patch application, plus style/comment review via task overrides. Luna is 20x cheaper than gpt-6-sol ($0.10/$0.50), so it runs at 'high' by default; 'xhigh'/'max' for larger shards. No 'ultra'."
     },
     "standard": {
-      "model": "gpt-5.6-terra",
-      "effort": "medium",
-      "notes": "Most review dimensions; effort up to 'high'. Solid everyday capability at reasonable cost."
+      "model": "gpt-6-sol",
+      "effort": "high",
+      "notes": "Most review dimensions; effort 'high' up to 'xhigh'. Replaced gpt-5.6-terra on 2026-09-22: gpt-6-sol ($2/$10) is cheaper than Terra ($2/$12) and the stronger model. Fallback: gpt-5.6-terra at the same effort."
     },
     "strong": {
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-sol",
+      "effort": "xhigh",
+      "notes": "Adjudication-grade review and universal fallback; effort 'xhigh' up to 'max' (same model as standard, differentiated by effort). Also the vision tier (attach images with -i). gpt-6-astra (effort medium/high) can also serve as strong tier; gpt-5.6-sol is the within-family fallback."
+    },
+    "heavy": {
+      "model": "gpt-6-astra",
       "effort": "high",
-      "notes": "Adjudication-grade review and universal fallback; effort up to 'xhigh'. Also the vision tier (attach images with -i) — GPT vision outperforms Claude on screenshot/UI review. When quota allows, gpt-6-astra (effort: medium/high) can also serve as strong tier."
+      "notes": "One rung below deep: large-PR deep dives, fallback when a deep (astra max) dispatch fails, heavier adjudication. $10/$50 per 1M, so it is used where needed, not as a default."
     },
     "deep": {
       "model": "gpt-6-astra",
       "effort": "max",
-      "notes": "Risk-surface review (security, migrations). Flagship model with reasoning levels low..max. Fallback: gpt-5.6-sol (effort: max)."
+      "notes": "Risk-surface review (security, migrations). Flagship; efforts low..max, plus 'ultra' (subagent fan-out, opt-in only). Fallback: gpt-6-sol (effort: max)."
     }
   },
   "gemini_tiers": {
@@ -117,6 +140,11 @@
       "effort": "high",
       "notes": "Coordinator, adjudication, universal fallback (highest-tier Pro model available)."
     },
+    "heavy": {
+      "model": "gemini-3.1-pro",
+      "effort": "max",
+      "notes": "No rung between strong (high) and deep (max) on Gemini: heavy maps up to deep settings."
+    },
     "deep": {
       "model": "gemini-3.1-pro",
       "effort": "max",
@@ -124,44 +152,129 @@
     }
   },
   "grok_tiers": {
-    "notes": "Model routing for xAI / Grok runtimes. Anchored on Grok 4.6 (with Grok 4.7 upcoming upon release).",
+    "notes": "Model routing for xAI / Grok runtimes. All tiers on grok-4.7 (released 2026-09-21; 500K context, $2/$6), differentiated by effort. grok-4.7 accepts ONLY low|medium|high|xhigh -- 'max' is rejected by the CLI (live-probed 2026-09-22). Fallback grok-4.6 at the same effort; never 4.5. grok-4.7-build-fast is 2x the price -- latency only, not a cheap tier.",
     "cheap": {
-      "model": "grok-4.6",
+      "model": "grok-4.7",
       "effort": "low",
       "notes": "Triage, mechanical checks, patch application with minimal reasoning."
     },
     "standard": {
-      "model": "grok-4.6",
-      "effort": "medium",
+      "model": "grok-4.7",
+      "effort": "high",
       "notes": "Most review dimensions."
     },
     "strong": {
-      "model": "grok-4.6",
-      "effort": "high",
+      "model": "grok-4.7",
+      "effort": "xhigh",
       "notes": "Coordinator, adjudication, universal fallback."
     },
+    "heavy": {
+      "model": "grok-4.7",
+      "effort": "xhigh",
+      "notes": "xhigh is grok-4.7's ceiling, so heavy maps up to deep settings."
+    },
     "deep": {
-      "model": "grok-4.6",
-      "effort": "max",
-      "notes": "Risk-surface review (security, migrations) with maximum reasoning depth. Upgrade to grok-4.7 upon release."
+      "model": "grok-4.7",
+      "effort": "xhigh",
+      "notes": "Risk-surface review (security, migrations) at the highest effort grok-4.7 accepts."
     }
   },
   "tasks": {
-    "triage": { "tier": "cheap" },
-    "coordinator": { "tier": "strong" },
-    "security-review": { "tier": "deep", "fallback": { "tier": "strong" } },
-    "migration-review": { "tier": "deep", "fallback": { "tier": "strong" } },
-    "logic-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
-    "silent-failure-review": { "tier": "standard", "effort": "high", "fallback": { "tier": "strong" } },
-    "test-review": { "tier": "standard", "effort": "medium", "fallback": { "tier": "strong" } },
-    "type-design-review": { "tier": "standard", "effort": "medium", "fallback": null },
-    "performance-review": { "tier": "standard", "effort": "medium", "fallback": null },
-    "dependency-review": { "tier": "standard", "effort": "medium", "fallback": null },
-    "style-review": { "tier": "standard", "effort": "low", "fallback": null },
-    "comment-review": { "tier": "standard", "effort": "low", "fallback": null },
-    "deep-dive": { "tier": "deep", "fallback": { "tier": "strong" } },
-    "trivial-review": { "tier": "cheap", "effort": "low", "fallback": null },
-    "apply-patch": { "tier": "cheap", "fallback": { "tier": "standard", "effort": "low" } }
+    "triage": {
+      "tier": "cheap",
+      "fallback": {
+        "tier": "standard"
+      }
+    },
+    "coordinator": {
+      "tier": "strong"
+    },
+    "security-review": {
+      "tier": "deep",
+      "fallback": {
+        "tier": "heavy"
+      }
+    },
+    "migration-review": {
+      "tier": "deep",
+      "fallback": {
+        "tier": "heavy"
+      }
+    },
+    "logic-review": {
+      "tier": "standard",
+      "effort": "xhigh",
+      "fallback": {
+        "tier": "strong"
+      }
+    },
+    "silent-failure-review": {
+      "tier": "standard",
+      "effort": "xhigh",
+      "fallback": {
+        "tier": "strong"
+      }
+    },
+    "test-review": {
+      "tier": "standard",
+      "effort": "high",
+      "fallback": {
+        "tier": "strong"
+      }
+    },
+    "type-design-review": {
+      "tier": "standard",
+      "effort": "high",
+      "fallback": null
+    },
+    "performance-review": {
+      "tier": "standard",
+      "effort": "high",
+      "fallback": null
+    },
+    "dependency-review": {
+      "tier": "standard",
+      "effort": "high",
+      "fallback": null
+    },
+    "style-review": {
+      "tier": "standard",
+      "effort": "medium",
+      "fallback": null,
+      "codex": {
+        "tier": "cheap",
+        "effort": "high"
+      }
+    },
+    "comment-review": {
+      "tier": "standard",
+      "effort": "medium",
+      "fallback": null,
+      "codex": {
+        "tier": "cheap",
+        "effort": "high"
+      }
+    },
+    "deep-dive": {
+      "tier": "heavy",
+      "fallback": {
+        "tier": "strong"
+      }
+    },
+    "trivial-review": {
+      "tier": "cheap",
+      "effort": "xhigh",
+      "fallback": {
+        "tier": "standard"
+      }
+    },
+    "apply-patch": {
+      "tier": "cheap",
+      "fallback": {
+        "tier": "standard",
+        "effort": "low"
+      }
+    }
   },
   "sensitive_repo": false
 }
