@@ -27,7 +27,7 @@ Do **not** route to `gpt-5.5` or older generations. Use GPT-6.1, GPT-6 and GPT-5
 ## Hard rules
 
 1. **Always pass `-m` and `-c model_reasoning_effort` explicitly on every dispatch.** The user's `~/.codex/config.toml` default may be the most expensive combination available (e.g. astra at `max`); an unspecified leaf silently inherits it and burns quota.
-2. **Review leaves are read-only: pass `-s read-only` explicitly.** Reviewers must not modify files, and on machines configured with `sandbox_mode = "danger-full-access"` a bare `codex exec` has full write access. Only Step-7 `apply-patch` dispatches may run writable.
+2. **Review leaves run `-s workspace-write`: pass it explicitly.** Leaves can then run tests and write scratch files in the worktree and `$TMPDIR`, but nowhere else. Do not use `-s read-only`: it blocks Jest's cache and heredoc temp files, and on 2 Nov 2026 blocked reviewers improvised a `node -e` Jest launcher that fork-bombed the machine. Do not omit `-s` either: on machines configured with `sandbox_mode = "danger-full-access"` a bare `codex exec` has full write access. Review leaves must not commit, push or edit tracked files; say so in the leaf prompt. Only Step-7 `apply-patch` dispatches may change tracked files.
 3. **Escalation ladder (one rung at a time):** gpt-6.1-sol high → gpt-6.1-sol xhigh → gpt-6.1-sol max (`heavy`) → astra xhigh (`deep`). `gpt-6-sol` and `gpt-5.6-terra` are off the ladder; they are only fallbacks when a `gpt-6.1-sol` dispatch errors.
 4. **The coordinator never runs on a cross-dispatched Codex leaf.** Cross-model dispatch is for leaves only; orchestration state stays in the host runtime.
 5. **Refusal/failure handling is unchanged** (see SKILL.md): GPT models don't share Claude's cyber-classifier refusal profile, but API errors, rate limits, and declines still happen — retry once on the task's fallback tier, tag `degraded: true`. If that fallback tier resolves to the same model that just failed (e.g. `triage`: `cheap` → `standard`, both `gpt-6.1-sol`), retry on `gpt-6-sol` at the fallback tier's effort instead of re-sending the same dispatch. Then record the producing model (e.g. `gpt-6-astra (xhigh)`, `gpt-6.1-sol (high)`, or `gpt-6-sol (high)` on a fallback) in the findings table.
@@ -39,7 +39,7 @@ Do **not** route to `gpt-5.5` or older generations. Use GPT-6.1, GPT-6 and GPT-5
 LOG=$(mktemp -t codex-review)
 codex exec --skip-git-repo-check \
   -m gpt-6.1-sol -c model_reasoning_effort=high \
-  -s read-only \
+  -s workspace-write \
   [-i screenshot.png] \
   "<self-contained leaf prompt>" </dev/null >"$LOG" 2>&1 &
 CODEX_PID=$!
