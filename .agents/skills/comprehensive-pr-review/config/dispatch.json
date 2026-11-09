@@ -40,6 +40,31 @@
     "**/Cargo.toml",
     "**/*.csproj"
   ],
+  "design_paths": [
+    "**/*.tf",
+    "**/template.y*ml",
+    "**/cloudformation/**",
+    "**/serverless*.y*ml",
+    "**/cdk/**",
+    "**/*.bicep",
+    "**/pulumi/**",
+    "**/k8s/**",
+    "**/helm/**",
+    "**/docker-compose*.y*ml",
+    "**/migrations/**",
+    "**/*.sql",
+    "**/schema.prisma",
+    "**/*.graphql",
+    "**/*.proto",
+    "**/openapi*.y*ml",
+    "**/openapi*.json",
+    "**/asyncapi*",
+    "**/*contract*",
+    "**/iam/**",
+    "**/*policy*.json",
+    "**/routes/**",
+    "**/*acl*"
+  ],
   "generated_paths": [
     "**/package-lock.json",
     "**/pnpm-lock.yaml",
@@ -188,6 +213,13 @@
     },
     "coordinator": {
       "tier": "strong"
+    },
+    "design-review": {
+      "tier": "strong",
+      "effort": "xhigh",
+      "fallback": {
+        "tier": "heavy"
+      }
     },
     "security-review": {
       "tier": "deep",

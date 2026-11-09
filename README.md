@@ -8,6 +8,7 @@ Portable agent skills packaged once and exposed through multiple installation su
 | --- | --- |
 | `test-challenger` | Review tests for coverage, false positives, reliability, and framework-specific gaps. |
 | `comprehensive-pr-review` | Run a structured multi-agent PR review before merge. |
+| `design-review` | Review a change's architecture from its design surface (infrastructure-as-code, schemas, contracts, permissions) before the code review. |
 
 `test-challenger` is the normalized packaged name for the original `test-challenge` source skill.
 
@@ -51,6 +52,7 @@ This installs the extension-backed commands:
 
 - `/skills:test-challenger`
 - `/skills:comprehensive-pr-review`
+- `/skills:design-review`
 
 ### Universal / Open Agent Skills
 

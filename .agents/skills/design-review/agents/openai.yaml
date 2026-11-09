@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Review"
+  short_description: "Review a change's architecture from its design surface"
+  default_prompt: "Use $design-review on this branch before the code review."

@@ -20,6 +20,26 @@ The **coordinator** records per finding after leaves return:
 - **degraded**: `true` when produced by a fallback model after a refusal/failure
 - **fix status** (after Step 7): `fixed-verified` / `fixed-unverified` / `skipped` / `open`
 
+## Design review prompt (`design-review`, strong tier, runs first)
+
+If the `design-review` skill is installed in the runtime, tell the leaf to follow it. Otherwise use this condensed form:
+
+```text
+Perform an architecture-level design review of branch `{branch}` (vs `{base}`). DO NOT write code. DO NOT read implementation source files: read only the design surface below, the PR description and the linked requirements.
+Design-surface files: {design_surface_files}
+Requirements: {pr_description_and_ticket}
+
+1. Sketch the added/changed components from the design surface: stores (keys, indexes), buses/queues/topics, functions/services, routes, schedules, roles, config sources, and the flows between them.
+2. List the access patterns the requirements imply: who reads/writes, lists, filters, sorts, paging, tenancy, ordering, retention, audit. Map each pattern to the store's keys and indexes. A pattern that needs a filter outside the key, a scan, an unindexed sort, or a tenant scope the keys do not carry is a store-fit question for this report, not a hand-off.
+3. Ask whether the design fits: store vs access patterns; tenant key and where authorization is enforced; any state fed by more than one event input; dedupe keys vs real-world identity; retry and dead-letter layers and what operators see on failure; one identity per component and wildcard permissions; runtime vs deploy-time config and missing-config behaviour; contract changes and their consumers; retention and audit records; deploy order and backfill; an existing component that already does this.
+4. For each question: evidence (design file:line), requirement at risk, likely concrete failure, options, and whether a deterministic fitness rule could catch it.
+
+Report: verdict PROCEED / DISCUSS / REDESIGN, the design questions (most consequential first, at most about five), and a "Hand-off to code review" list of questions only code can answer.
+If you cannot review any part of this assignment, say so explicitly at the top of your report.
+```
+
+The coordinator appends the hand-off list to every other leaf's focus areas, and links later code findings that are symptoms of a design question to that question in the report.
+
 ## Security review prompt (`security-review` — deep tier)
 
 ```text

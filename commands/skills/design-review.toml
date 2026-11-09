@@ -1,0 +1,8 @@
+description = "Architecture-level review of a change from its design surface only (infrastructure-as-code, schemas, data store definitions, event and API contracts, routes, permissions, migrations, config), without reading implementation code. Asks whether the change should be built this way before anyone checks whether it was built correctly. Use before a code review of any PR that adds or changes a data store, queue, topic, function, service, route, role, schedule or contract; on a design doc, HLD, ADR or ticket before code exists; when the user says \"design review\", \"architecture review\", \"is this the right design\", \"review the infra/YAML\", \"should this be X\"; and when comprehensive-pr-review triage reports a design-surface hit."
+prompt = """
+Use @{.agents/skills/design-review/SKILL.md} as the primary instructions for this request.
+
+Inspect the repository, files, or diff before responding, and adapt the workflow to Gemini CLI's tool model when needed.
+
+Supporting files referenced by the workflow live at .agents/skills/design-review/references/ within this extension — read them when a step points to one.
+"""

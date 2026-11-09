@@ -27,7 +27,8 @@ python3 scripts/install_skills.py --target codex all
 python3 scripts/install-skill-from-github.py \
   --repo MV011/agent-skills \
   --path .agents/skills/test-challenger \
-  --path .agents/skills/comprehensive-pr-review
+  --path .agents/skills/comprehensive-pr-review \
+  --path .agents/skills/design-review
 ```
 
 ## Claude
@@ -59,6 +60,7 @@ After install, use:
 
 - `/skills:test-challenger`
 - `/skills:comprehensive-pr-review`
+- `/skills:design-review`
 
 ## Universal / Open Agent Skills
 

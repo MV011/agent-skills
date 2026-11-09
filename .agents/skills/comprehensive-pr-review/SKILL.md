@@ -1,6 +1,6 @@
 ---
 name: comprehensive-pr-review
-description: Multi-agent comprehensive PR review that triages the diff, routes tiered specialized review agents (config-driven model routing on Claude runtimes), and consolidates findings with per-model provenance. Covers code quality, security, performance, patterns, DRY, type design, silent failures, ambiguous assertions, comments, dependencies, testing gaps, and implementation-specific deep dives. Use this skill whenever the user asks for a code review, PR review, diff review, pre-merge check, quality audit, or says things like "review my changes", "review this branch", "review this MR", "check before merging", "comprehensive review", or "run a PR review". Also trigger proactively when completing a major feature and preparing to merge.
+description: Multi-agent comprehensive PR review that triages the diff, routes tiered specialized review agents (config-driven model routing on Claude runtimes), and consolidates findings with per-model provenance. Covers design (architecture-level review of infrastructure, schemas and contracts, run first), code quality, security, performance, patterns, DRY, type design, silent failures, ambiguous assertions, comments, dependencies, testing gaps, and implementation-specific deep dives. Use this skill whenever the user asks for a code review, PR review, diff review, pre-merge check, quality audit, or says things like "review my changes", "review this branch", "review this MR", "check before merging", "comprehensive review", or "run a PR review". Also trigger proactively when completing a major feature and preparing to merge.
 ---
 
 # Comprehensive PR Review Skill
@@ -105,6 +105,7 @@ Then classify (thresholds and pattern lists live in `config/dispatch.json`):
 2. **Risk surface** — changed paths matched against `risk_paths` (auth, crypto, payment, sessions, middleware, SQL/migrations, CI/CD, dependency manifests). Any hit = risk-surface PR **regardless of size**.
 3. **Nature** — pure refactor / new behavior / dependency bump / generated. Files matching `generated_paths` (lockfiles, snapshots, dist) are excluded from deep review.
 4. **Test delta** — are tests added/modified proportionally to source changes?
+5. **Design surface**: changed paths matched against `design_paths` (infrastructure-as-code, schemas, migrations, contracts, IAM, route and permission maps). Any hit means the change alters the system's shape, not just its code.
 
 Produce the **structured triage plan** (schema in `references/triage.md`): which agents, at which tier/effort, over which file groups, and why. **The plan goes into the final report** so routing decisions are auditable.
 
@@ -112,6 +113,7 @@ Produce the **structured triage plan** (schema in `references/triage.md`): which
 - **Trivial** (within trivial thresholds, no risk-path hits, no behavior change) → a single `trivial-review` pass; skip fan-out entirely and jump to Step 6 after the gates.
 - **Typical** → one agent per applicable dimension (Step 4), grouped by module if the PR spans several.
 - **Risk-surface hit** (any size) → additionally dispatch `security-review` on the **deep tier**, scoped to just the matched files.
+- **Design-surface hit** (any size) → dispatch `design-review` **first**, scoped to the matched design files plus the PR description and linked requirements. Its hand-off questions go into every code-review leaf prompt (Step 5), and a DISCUSS or REDESIGN verdict leads the final report.
 - **Large** (≥ large thresholds) → shard by module/package, one agent per shard per dimension, plus a coordinator **cross-shard consistency pass** after leaves return.
 
 **Whole-repo branches:** if the branch has 50+ files because the entire repo was created on it, ask the user: "This branch has X files changed since the base. Should I review everything, or focus on the recent work?" (uncommitted changes first, then the last 2–3 commits).
@@ -145,6 +147,7 @@ Selection is driven by the triage plan. Task names below key into `config/dispat
 
 | Condition (from triage) | Task | Role |
 |---|---|---|
+| Any `design_paths` hit (any PR size) | `design-review` | Design Reviewer: architecture-level review of the design surface only, no implementation code. Runs before the other leaves. Follows the `design-review` skill when installed, else the template in `references/agent-prompts.md` |
 | Any `risk_paths` hit (any PR size) | `security-review` | Security Reviewer — deep tier, scoped to matched files |
 | New types/interfaces added | `type-design-review` | Type Design Analyzer |
 | Comments added/changed | `comment-review` | Comment Accuracy Analyzer |
@@ -168,7 +171,7 @@ Total agent count may exceed `max_concurrent_agents` — that cap only bounds ho
 
 ## Step 5: Dispatch Agents in Parallel
 
-Launch the selected reviewers in waves of ≤ `max_concurrent_agents`, using whatever agent/subagent mechanism the runtime provides. Each reviewer runs in its own context and must not modify files. Pass per dispatch:
+If the plan includes `design-review`, run it alone first and wait for it: append its "Hand-off to code review" questions to every other leaf's `{specific_focus_areas}`. Then launch the selected reviewers in waves of ≤ `max_concurrent_agents`, using whatever agent/subagent mechanism the runtime provides. Each reviewer runs in its own context and must not modify files. Pass per dispatch:
 
 - `role`/`specialization`: the reviewer capability from Step 4
 - `model`: resolved from the task's tier (Claude runtimes: per `references/model-routing-claude.md`; Codex/GPT dispatch: per `references/model-routing-codex.md`, applying the task's `codex` override block if present)
@@ -219,6 +222,9 @@ After all agents complete (or degrade), consolidate:
 ```text
 ## Triage Plan
 {the structured triage block from Step 2, verbatim}
+
+## Design Review
+{only when design-review ran: verdict (PROCEED / DISCUSS / REDESIGN) and its design questions, most consequential first. Code findings that are symptoms of a design question are linked to it instead of listed as independent root causes}
 
 ## Top 3 Most Impactful
 

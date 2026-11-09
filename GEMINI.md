@@ -6,6 +6,7 @@ This Gemini CLI extension exposes portable skill definitions as native Gemini co
 
 - `/skills:test-challenger`
 - `/skills:comprehensive-pr-review`
+- `/skills:design-review`
 
 ## Source Of Truth
 
