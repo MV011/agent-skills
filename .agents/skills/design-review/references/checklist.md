@@ -9,9 +9,9 @@ Files the review reads (adapt the globs to the repo):
 Declarative files only; see "What counts as design surface" in SKILL.md for grey-zone files.
 
 - Infrastructure-as-code: `**/*.tf`, `**/template.y*ml`, `**/cloudformation/**`, `**/serverless*.y*ml`, `**/cdk/**`, `**/*.bicep`, `**/pulumi/**`, `**/k8s/**`, `**/helm/**`, `**/docker-compose*.y*ml`, `**/Dockerfile`
-- Data definitions: `**/migrations/**`, `**/*.sql`, `**/schema*.{prisma,graphql,json,ts}`, ORM model/schema files
-- Contracts: `**/openapi*.{y*ml,json}`, `**/*.proto`, `**/asyncapi*`, `**/*contract*`, event schema files, JSON schemas
-- Routing and access: route maps, ACL/permission maps, gateway configs, IAM policies
+- Data definitions: `**/migrations/**`, `**/Migrations/**` (EF Core: read the migration, skip `*.Designer.cs` and `*ModelSnapshot.cs`), `**/*.sql`, `**/schema*.{prisma,graphql,json,ts}`, `**/schemas/**`, `**/Schemas/**`, ORM model/schema files
+- Contracts: `**/openapi*.{y*ml,json}`, `**/*.proto`, `**/asyncapi*`, `**/*contract*`, `**/*.Contracts/**`, `**/api-contracts/**`, event schema files, JSON schemas
+- Routing and access: route maps, ACL/permission maps (`**/permission*/**`, `**/Permission*/**`), gateway configs, IAM policies. In .NET the controllers and endpoint classes are the route map, so `**/Controllers/**` and `**/Endpoints/**` are grey-zone files: read the route, verb and authorization declarations in the diff, never the method bodies
 - Config: environment/parameter definitions, feature-flag definitions, CI/CD pipeline definitions
 - Design docs: `**/docs/**/*.md` ADRs/HLDs touched by the change
 
