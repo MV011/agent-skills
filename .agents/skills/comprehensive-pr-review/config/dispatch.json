@@ -107,8 +107,8 @@
     "**/*.min.js",
     "**/*.map",
     "**/*.generated.*",
-    "**/*.Designer.cs",
-    "**/*ModelSnapshot.cs"
+    "**/Migrations/**/*.Designer.cs",
+    "**/Migrations/**/*ModelSnapshot.cs"
   ],
   "tiers": {
     "search": {

@@ -103,7 +103,7 @@ Then classify (thresholds and pattern lists live in `config/dispatch.json`):
 
 1. **Size** — LOC added/removed, files changed, distinct modules touched.
 2. **Risk surface** — changed paths matched against `risk_paths` (auth, crypto, payment, sessions, middleware, SQL/migrations, CI/CD, dependency manifests). Any hit = risk-surface PR **regardless of size**.
-3. **Nature** — pure refactor / new behavior / dependency bump / generated. Files matching `generated_paths` (lockfiles, snapshots, dist) are excluded from deep review.
+3. **Nature** — pure refactor / new behavior / dependency bump / generated. Files matching `generated_paths` (lockfiles, snapshots, dist) are excluded from deep review. EF Core migration files compile into the application, so they must first pass the check in `references/triage.md`.
 4. **Test delta** — are tests added/modified proportionally to source changes?
 5. **Design surface**: changed paths matched against `design_paths` (infrastructure-as-code, schemas, migrations, contracts, IAM, route and permission maps). Any hit means the change alters the system's shape, not just its code.
 
