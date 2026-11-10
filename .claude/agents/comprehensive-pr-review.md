@@ -54,7 +54,7 @@ This skill runs on any agent runtime. Model selection is expressed as **abstract
 Effort policy: when a model generation gets cheaper, spend the savings on effort; never lower effort to exploit newer-model efficiency. If a runtime lacks a requested effort level, round up to the nearest supported one, within that runtime's ceiling.
 
 Runtime-specific mappings are configured in `config/dispatch.json` and detailed in `references/`:
-- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything** — Sonnet 5.5 is the Claude floor and runs `search` plus `cheap` (triage, trivial pass, patch application); review dimensions run on Opus 5.5 (`standard`…`heavy`, split by effort) and Fable 5.1 (`deep`), with Opus 5.5 as the refusal fallback. Sonnet and Opus top out at `xhigh`, never `max`. Sonnet 5 / Haiku 4.5 are not used.
+- **On a Claude runtime** (Claude Code, Claude Agent SDK, direct Claude API): read `references/model-routing-claude.md` and `config/dispatch.json` (`tiers`) **before dispatching anything** — Sonnet 5.5 is the Claude floor and runs `search` plus `cheap` (triage, trivial pass, patch application); review dimensions run on Opus 5.5 (`standard`…`heavy`, split by effort) and Fable 5.2 (`deep`), with Opus 5.5 as the refusal fallback. Sonnet and Opus top out at `xhigh`, never `max`. Sonnet 5 / Haiku 4.5 are not used.
 - **On a Codex runtime, or when cross-dispatching leaves via the Codex CLI** (`codex exec` — e.g. from Claude Code for a second opinion on a separate quota pool): read `references/model-routing-codex.md` and the `codex_tiers` block in `config/dispatch.json` — they encode the tier→model mapping (gpt-6.1-sol for `cheap` through `heavy`, split by effort: high / high / xhigh / max; gpt-6-astra xhigh for `deep` only; gpt-6-sol then gpt-5.6-terra as fallbacks) and the per-task `codex` overrides, the escalation ladder, and the headless dispatch mechanics (workspace-write sandbox for review leaves, stdin/PID hygiene).
 - **On a Gemini runtime** (Gemini CLI, Antigravity): read `references/model-routing-gemini.md` and the `gemini_tiers` block in `config/dispatch.json` — maps abstract tiers to Gemini 3.8 Flash (low/high reasoning) and Gemini 3.1 Pro (3.8 Pro is not yet released).
 - **On an xAI / Grok runtime**: read `references/model-routing-grok.md` and the `grok_tiers` block in `config/dispatch.json` — maps abstract tiers to Grok 4.7 (efforts low…xhigh; `max` is rejected).
@@ -253,7 +253,7 @@ After all agents complete (or degrade), consolidate:
 | 2 | HIGH | auth/session.ts:88 | Token compared with == not constant-time | Security | opus-5-5 (xhigh) | 85% | yes |
 
 ## Degradations & Coverage Gaps
-- security-review: fable-5-1 refused (classifier); retried on opus-5-5 — findings above tagged degraded
+- security-review: fable-5-2 refused (classifier); retried on opus-5-5 — findings above tagged degraded
 - {or: "none"}
 
 ## Gate Results

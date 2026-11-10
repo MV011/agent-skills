@@ -2,11 +2,11 @@
   "notes": [
     "Model routing for Claude runtimes lives in 'tiers'; routing for Codex runtimes / codex-exec cross-dispatch lives in 'codex_tiers' (see references/model-routing-codex.md); Gemini in 'gemini_tiers' (references/model-routing-gemini.md); Grok in 'grok_tiers' (references/model-routing-grok.md). Other runtimes map the abstract tiers onto their own lineup — see 'Portability & Model Routing' in SKILL.md.",
     "Tier order: cheap < standard < strong < heavy < deep. 'heavy' (added 2026-09-22) = one rung below deep: gpt-6.1-sol max on Codex (gpt-6-astra high until 2026-09-30), Opus 5.5 at xhigh on Claude (keeps the Fable budget for risk surface; Opus tops out at xhigh, so on Claude heavy runs the same model and effort as strong). Runtimes with no rung between strong and deep (Grok, Gemini) map heavy UP to their deep settings.",
-    "Claude floor is Sonnet 5.5 (Bogdan 2026-09-29: 'with sonnet 5.5 being good, we can use it as the lowest allowed claude model'). Sonnet 5.5 runs 'search' and 'cheap' (triage, trivial pass, patch application); every review dimension runs on Opus 5.5 (standard/strong/heavy) or Fable 5.1 (deep). Sonnet 5 and Haiku 4.5 are not used for any review role. Haiku 5.5 takes simple tasks once it ships. Sonnet and Opus top out at xhigh, never max (Bogdan 2026-09-29: 'they perform their best at xhigh'); max is Fable-only on Claude.",
+    "Claude floor is Sonnet 5.5 (Bogdan 2026-09-29: 'with sonnet 5.5 being good, we can use it as the lowest allowed claude model'). Sonnet 5.5 runs 'search' and 'cheap' (triage, trivial pass, patch application); every review dimension runs on Opus 5.5 (standard/strong/heavy) or Fable 5.2 (deep). Sonnet 5 and Haiku 4.5 are not used for any review role. Haiku 5.5 takes simple tasks once it ships. Sonnet and Opus top out at xhigh, never max (Bogdan 2026-09-29: 'they perform their best at xhigh'); max is Fable-only on Claude.",
     "limits.max_concurrent_agents caps SIMULTANEOUS dispatches, not the total. A large PR may select 12 agents; launch them in waves of <= max_concurrent_agents and queue the rest.",
     "fallback: null means: on refusal/failure, record the dimension as 'no coverage — degraded' in the report and continue. Never abort the run.",
     "Per-runtime task overrides: a task may carry a 'codex' block ({tier, effort}) that replaces the task's tier/effort ONLY for Codex runtimes / codex-exec cross-dispatch. Resolution order on Codex: task.codex.effort > task.codex.tier's codex effort > task.effort > codex_tiers[tier].effort. Other runtimes ignore the block.",
-    "Effort policy (Bogdan 2026-09-22): Opus 5.5 and gpt-6-sol are cheaper than what they replaced, so spend the savings on effort; never lower effort to exploit newer-model efficiency. Task efforts were each raised one rung that day. If a runtime lacks a requested level, round UP to the nearest one it supports (e.g. Gemini xhigh -> max) except where a ceiling applies (grok-4.7 tops at xhigh). Ceiling (Bogdan 2026-09-29): Sonnet 5.5 and Opus 5.5 top out at xhigh, never max; Fable 5.1 keeps max on deep. Codex (Bogdan 2026-09-30): gpt-6-astra tops out at xhigh for now; gpt-6.1-sol may run max (heavy tier, deep fallback)."
+    "Effort policy (Bogdan 2026-09-22): Opus 5.5 and gpt-6-sol are cheaper than what they replaced, so spend the savings on effort; never lower effort to exploit newer-model efficiency. Task efforts were each raised one rung that day. If a runtime lacks a requested level, round UP to the nearest one it supports (e.g. Gemini xhigh -> max) except where a ceiling applies (grok-4.7 tops at xhigh). Ceiling (Bogdan 2026-09-29): Sonnet 5.5 and Opus 5.5 top out at xhigh, never max; Fable 5.2 keeps max on deep. Codex (Bogdan 2026-09-30): gpt-6-astra tops out at xhigh for now; gpt-6.1-sol may run max (heavy tier, deep fallback)."
   ],
   "limits": {
     "max_concurrent_agents": 6,
@@ -114,9 +114,9 @@
       "notes": "One rung below deep: large-PR deep dives, deep-tier fallback, Fable-cap overflow. Opus 5.5 at xhigh, its ceiling (Bogdan 2026-09-29: no Opus max), so on Claude this matches strong; it spends no max_fable_dispatches slot. Effort is prompt-encoded on Claude Code."
     },
     "deep": {
-      "model": "claude-fable-5-1",
+      "model": "claude-fable-5-2",
       "claude_code": "fable",
-      "notes": "Risk-surface review (security, migrations) and architectural deep dives. Refusal fallback is Opus 5.5 (strong). Mandatory 30-day retention, no ZDR. Most expensive tier ($10/$50), so it stays capped by max_fable_dispatches.",
+      "notes": "Risk-surface review (security, migrations) and architectural deep dives. Refusal fallback is Opus 5.5 (strong). Mandatory 30-day retention, no ZDR. Most expensive tier ($8/$40), so it stays capped by max_fable_dispatches.",
       "effort": "max"
     }
   },
