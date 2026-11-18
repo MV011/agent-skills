@@ -2,43 +2,45 @@
 
 **Read this file when leaves run on GPT models** — either (a) the skill itself is running on a Codex runtime, or (b) a Claude (or other) runtime cross-dispatches review leaves through the Codex CLI (`codex exec`) for second opinions on a separate quota pool. On a Claude runtime dispatching Claude subagents, use `references/model-routing-claude.md` instead; the two can coexist in one run (e.g. Claude leaves + one Codex adversarial pass).
 
-## Tier → model mapping (GPT-6.1 Sol + GPT-6 Astra, live-verified 2026-09-30)
+## Tier → model mapping (GPT-6.2 Sol + GPT-6.2 Astra, live-verified 2026-11-18)
 
-Owner ruling (2026-09-30): "use sol 6.1 for as much as possible, cheap and capable, astra 6 at the very top for now (xhigh)". Every tier below `deep` runs `gpt-6.1-sol`, split by effort; `gpt-6-astra` runs only `deep`, at `xhigh`.
+2026-11-18: gpt-6.2-sol / gpt-6.2-astra released and live-probed OK (codex-cli 0.170.0); they replace 6.1-sol / 6-astra as primaries; 6.1-sol is the first fallback.
+
+Owner ruling (2026-09-30): "use sol 6.1 for as much as possible, cheap and capable, astra 6 at the very top for now (xhigh)" (carried to the 6.2 models on 2026-11-18). Every tier below `deep` runs `gpt-6.2-sol`, split by effort; `gpt-6.2-astra` runs only `deep`, at `xhigh`.
 
 | Tier | Model ID | Effort | Role | Key constraints |
 |---|---|---|---|---|
-| `cheap` | `gpt-6.1-sol` | `high` | Triage, mechanical checks, patch application, **style + comment review** (via task `codex` overrides) | Replaced `gpt-6-luna` on 2026-09-30. Same model and default effort as `standard`; on Codex the two differ only through per-task efforts |
-| `standard` | `gpt-6.1-sol` | `high`–`xhigh` | Most review dimensions (logic + silent-failure at `xhigh`) | $2/$10 per 1M, cached input $0.10. Nearly matches astra on agentic coding at a fifth of the price. Fallback: `gpt-6-sol` at the same effort, then `gpt-5.6-terra` |
-| `strong` | `gpt-6.1-sol` | `xhigh`–`max` | Coordinator-grade adjudication, universal fallback | Same model as `standard`, one effort band up. Also the vision tier (`-i`). Fallback: `gpt-6-sol` at the same effort |
-| `heavy` | `gpt-6.1-sol` | `max` | Large-PR `deep-dive`, fallback when a `deep` dispatch fails | One rung below deep. Was `gpt-6-astra` `high` until 2026-09-30; astra is now reserved for `deep`. Fallback: `gpt-6-sol` `max` |
-| `deep` | `gpt-6-astra` | `xhigh` | Risk-surface (security/migration) review | The only astra tier. `xhigh` is the ceiling for now; `max` only on explicit request. Flagship, $10/$50. Fallback: `gpt-6.1-sol` at `max` |
+| `cheap` | `gpt-6.2-sol` | `high` | Triage, mechanical checks, patch application, **style + comment review** (via task `codex` overrides) | Sol replaced `gpt-6-luna` on 2026-09-30; `gpt-6.2-sol` replaced `gpt-6.1-sol` on 2026-11-18. Same model and default effort as `standard`; on Codex the two differ only through per-task efforts. Fallback: `gpt-6.1-sol` at the same effort |
+| `standard` | `gpt-6.2-sol` | `high`–`xhigh` | Most review dimensions (logic + silent-failure at `xhigh`) | $2/$10 per 1M, cached input $0.10 (owner 2026-11-18), the same as `gpt-6.1-sol`; a quarter of `gpt-6.2-astra`'s input/output price. Fallback: `gpt-6.1-sol` at the same effort, then `gpt-6-sol`, then `gpt-5.6-terra` |
+| `strong` | `gpt-6.2-sol` | `xhigh`–`max` | Coordinator-grade adjudication, universal fallback | Same model as `standard`, one effort band up. Also the vision tier (`-i`). Fallback: `gpt-6.1-sol` at the same effort, then `gpt-6-sol` |
+| `heavy` | `gpt-6.2-sol` | `max` | Large-PR `deep-dive`, fallback when a `deep` dispatch fails | One rung below deep. Was `gpt-6-astra` `high` until 2026-09-30, then `gpt-6.1-sol` `max` until 2026-11-18; astra is reserved for `deep`. Fallback: `gpt-6.1-sol` `max`, then `gpt-6-sol` `max` |
+| `deep` | `gpt-6.2-astra` | `xhigh` | Risk-surface (security/migration) review | The only astra tier. `xhigh` is the ceiling for now; `max` only on explicit request. Flagship, $8/$40 (owner 2026-11-18), 20% below `gpt-6-astra` ($10/$50). Fallback: `gpt-6.2-sol` at `max` |
 
-`gpt-6.1-sol` needs **Codex CLI ≥ 0.159**: 0.158 rejects the ID on a ChatGPT login ("model is not supported when using Codex with a ChatGPT account"). Upgrade the CLI (`brew upgrade --cask codex`) before assuming the model is unavailable. Supported efforts: `low`…`max` plus `ultra`.
+`gpt-6.2-sol` and `gpt-6.2-astra` were live-probed on **Codex CLI 0.170.0**; supported efforts: `low`…`max` plus `ultra`. History: `gpt-6.1-sol` needed **Codex CLI ≥ 0.159** (0.158 rejected the ID on a ChatGPT login with "model is not supported when using Codex with a ChatGPT account"). If a newer ID is rejected that way, upgrade the CLI (`brew upgrade --cask codex`) before assuming the model is unavailable.
 
 Beyond `deep`: effort **`ultra`** (astra and the sols; not luna) spawns parallel delegate subagents — a different execution mode, not just more thinking. It is slow and the most expensive option there is. **Opt-in only**, for plan-level/architecture-level passes on very large PRs; never route ordinary review dimensions to it.
 
-`gpt-5.3-codex-spark` (near-instant, text-only) is **no longer in the Codex model cache** as of 2026-09-22. Use `gpt-6.1-sol` `low` for fast paths unless a live probe shows spark is back.
+`gpt-5.3-codex-spark` (near-instant, text-only) is **no longer in the Codex model cache** as of 2026-09-22. Use `gpt-6.2-sol` `low` for fast paths unless a live probe shows spark is back.
 
-Do **not** route to `gpt-5.5` or older generations. Use GPT-6.1, GPT-6 and GPT-5.6 only. If a model misbehaves on a task, fall back within those families (`gpt-6.1-sol` → `gpt-6-sol` → `gpt-5.6-terra`; astra → `gpt-6.1-sol`), never to a prior generation. `gpt-6-luna` is off the review routing since 2026-09-30.
+Do **not** route to `gpt-5.5` or older generations. Use GPT-6.2, GPT-6.1, GPT-6 and GPT-5.6 only. If a model misbehaves on a task, fall back within those families (`gpt-6.2-astra` ↔ `gpt-6.2-sol` → `gpt-6.1-sol` → `gpt-6-sol` → `gpt-5.6-sol`/`gpt-5.6-terra`; astra → `gpt-6.2-sol`), never to a prior generation. `gpt-6-luna` is off the review routing since 2026-09-30.
 
 **Verify before trusting this table on a new machine or after a model-generation bump:** `~/.codex/models_cache.json` is the Codex CLI's own authoritative model list; confirm a candidate with `codex exec --skip-git-repo-check -m <id> -c model_reasoning_effort=low "Reply OK" </dev/null`. Never guess model IDs from training data.
 
 ## Hard rules
 
-1. **Always pass `-m` and `-c model_reasoning_effort` explicitly on every dispatch.** The user's `~/.codex/config.toml` default may be the most expensive combination available (e.g. astra at `max`); an unspecified leaf silently inherits it and burns quota.
+1. **Always pass `-m` and `-c model_reasoning_effort` explicitly on every dispatch.** The user's `~/.codex/config.toml` default is `gpt-6.2-sol` at effort `xhigh` (updated 2026-11-18), above the `cheap` and `standard` efforts, and it can change at any time; an unspecified leaf silently inherits it and burns quota.
 2. **Review leaves run `-s workspace-write`: pass it explicitly.** Leaves can then run tests and write scratch files in the worktree and `$TMPDIR`, but nowhere else. Do not use `-s read-only`: it blocks Jest's cache and heredoc temp files, and on 2 Nov 2026 blocked reviewers improvised a `node -e` Jest launcher that fork-bombed the machine. Do not omit `-s` either: on machines configured with `sandbox_mode = "danger-full-access"` a bare `codex exec` has full write access. Review leaves must not commit, push or edit tracked files; say so in the leaf prompt. Only Step-7 `apply-patch` dispatches may change tracked files.
-3. **Escalation ladder (one rung at a time):** gpt-6.1-sol high → gpt-6.1-sol xhigh → gpt-6.1-sol max (`heavy`) → astra xhigh (`deep`). `gpt-6-sol` and `gpt-5.6-terra` are off the ladder; they are only fallbacks when a `gpt-6.1-sol` dispatch errors.
+3. **Escalation ladder (one rung at a time):** gpt-6.2-sol high → gpt-6.2-sol xhigh → gpt-6.2-sol max (`heavy`) → gpt-6.2-astra xhigh (`deep`). `gpt-6.1-sol`, `gpt-6-sol` and `gpt-5.6-terra` are off the ladder; they are only fallbacks when a `gpt-6.2-sol` dispatch errors.
 4. **The coordinator never runs on a cross-dispatched Codex leaf.** Cross-model dispatch is for leaves only; orchestration state stays in the host runtime.
-5. **Refusal/failure handling is unchanged** (see SKILL.md): GPT models don't share Claude's cyber-classifier refusal profile, but API errors, rate limits, and declines still happen — retry once on the task's fallback tier, tag `degraded: true`. If that fallback tier resolves to the same model that just failed (e.g. `triage`: `cheap` → `standard`, both `gpt-6.1-sol`), retry on `gpt-6-sol` at the fallback tier's effort instead of re-sending the same dispatch. Then record the producing model (e.g. `gpt-6-astra (xhigh)`, `gpt-6.1-sol (high)`, or `gpt-6-sol (high)` on a fallback) in the findings table.
-6. **Vision dimensions route to `gpt-6.1-sol` or astra.** If the PR includes UI screenshots, visual diffs, or asset changes needing visual judgment, attach images with `-i <file>` and use `strong` or `deep` regardless of the dimension's normal tier.
+5. **Refusal/failure handling is unchanged** (see SKILL.md): GPT models don't share Claude's cyber-classifier refusal profile, but API errors, rate limits, and declines still happen — retry once on the task's fallback tier, tag `degraded: true`. If that fallback tier resolves to the same model that just failed (e.g. `triage`: `cheap` → `standard`, both `gpt-6.2-sol`), retry on `gpt-6.1-sol` at the fallback tier's effort instead of re-sending the same dispatch. Then record the producing model (e.g. `gpt-6.2-astra (xhigh)`, `gpt-6.2-sol (high)`, or `gpt-6.1-sol (high)` on a fallback) in the findings table.
+6. **Vision dimensions route to `gpt-6.2-sol` or `gpt-6.2-astra`.** If the PR includes UI screenshots, visual diffs, or asset changes needing visual judgment, attach images with `-i <file>` and use `strong` or `deep` regardless of the dimension's normal tier.
 
 ## Headless dispatch mechanics (`codex exec` from any runtime)
 
 ```bash
 LOG=$(mktemp -t codex-review)
 codex exec --skip-git-repo-check \
-  -m gpt-6.1-sol -c model_reasoning_effort=high \
+  -m gpt-6.2-sol -c model_reasoning_effort=high \
   -s workspace-write \
   [-i screenshot.png] \
   "<self-contained leaf prompt>" </dev/null >"$LOG" 2>&1 &
@@ -53,8 +55,8 @@ CODEX_PID=$!
 
 ## Per-task `codex` overrides
 
-A task in `config/dispatch.json` may carry a `codex` block (`{tier, effort}`) that applies **only** on Codex runtimes / `codex exec` cross-dispatch. Resolution: `task.codex.effort` > the override tier's `codex_tiers` effort > `task.effort` > `codex_tiers[tier].effort`. Current overrides: `style-review` and `comment-review` → `cheap` (`gpt-6.1-sol` high, up from the task's `medium`). Other runtimes ignore the block, so style review stays on Opus 5.5 on Claude.
+A task in `config/dispatch.json` may carry a `codex` block (`{tier, effort}`) that applies **only** on Codex runtimes / `codex exec` cross-dispatch. Resolution: `task.codex.effort` > the override tier's `codex_tiers` effort > `task.effort` > `codex_tiers[tier].effort`. Current overrides: `style-review` and `comment-review` → `cheap` (`gpt-6.2-sol` high, up from the task's `medium`). Other runtimes ignore the block, so style review stays on Opus 5.5 on Claude.
 
 ## Effort mapping
 
-`effort` values in `config/dispatch.json` map 1:1 onto `-c model_reasoning_effort=<value>` (low/medium/high/xhigh/max — all first-class CLI values, unlike Claude Code where effort is prompt-encoded). Respect each tier's ceiling from the table above: `gpt-6-astra` stops at `xhigh` for now. `gpt-6-luna` rejects `ultra`.
+`effort` values in `config/dispatch.json` map 1:1 onto `-c model_reasoning_effort=<value>` (low/medium/high/xhigh/max — all first-class CLI values, unlike Claude Code where effort is prompt-encoded). Respect each tier's ceiling from the table above: `gpt-6.2-astra` stops at `xhigh` for now. `gpt-6-luna` rejects `ultra`.
